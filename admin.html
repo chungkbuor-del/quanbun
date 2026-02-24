@@ -2,50 +2,50 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Quản lý & Doanh thu - Quán Chung</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Quán Chung - Sửa lỗi Thống kê</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; padding: 20px; font-family: sans-serif; }
+        body { background-color: #f0f2f5; padding: 15px; font-family: sans-serif; }
         .admin-title { color: #dc3545; font-weight: bold; text-align: center; margin-bottom: 20px; }
-        .section-title { background: #dc3545; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; }
-        .order-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: none; }
-        .report-card { background: #fff; border-radius: 12px; padding: 20px; border-top: 5px solid #ffc107; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .btn-done { background-color: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 8px; margin-top: 10px; }
-        .btn-pay { background-color: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 8px; margin-top: 10px; }
-        .item-row-report { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
+        .order-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 5px solid #0d6efd; }
+        .report-card { background: white; border-radius: 12px; padding: 20px; border-top: 5px solid #ffc107; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 20px; }
+        .history-card { background: #fff; border-radius: 12px; padding: 20px; border-top: 5px solid #6c757d; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 30px; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container-fluid">
         <h2 class="admin-title">🔔 QUẢN LÝ QUÁN CHUNG</h2>
         <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
-        <div class="row mb-5">
-            <div class="col-md-6">
-                <div class="section-title text-center">♨️ CHƯA LÀM</div>
-                <div id="list-chua-lam"></div>
+        <div class="row">
+            <div class="col-md-6"><div class="bg-danger text-white p-2 mb-2 rounded text-center fw-bold">♨️ ĐƠN CHƯA LÀM</div><div id="list-chua-lam"></div></div>
+            <div class="col-md-6"><div class="bg-success text-white p-2 mb-2 rounded text-center fw-bold">✅ ĐƠN ĐÃ XONG</div><div id="list-da-xong"></div></div>
+        </div>
+
+        <div class="report-card">
+            <h4 class="text-center fw-bold mb-3 text-primary">📊 DOANH THU HÔM NAY (<span id="current-date">--/--</span>)</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center align-middle">
+                    <thead class="table-light"><tr><th>MÓN</th><th>SL</th><th>THÀNH TIỀN</th></tr></thead>
+                    <tbody id="item-revenue-list"></tbody>
+                </table>
             </div>
-            <div class="col-md-6">
-                <div class="section-title text-center" style="background: #28a745;">✅ ĐÃ XONG</div>
-                <div id="list-da-xong"></div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <h4 class="fw-bold text-success mb-0">TỔNG: <span id="total-revenue">0đ</span></h4>
+                <button class="btn btn-primary fw-bold p-3" onclick="chotSoTaiCho()" id="btn-chot-so">🔒 CHỐT SỔ & LƯU LỊCH SỬ</button>
             </div>
         </div>
 
-        <hr>
-
-        <div class="report-card mt-4">
-            <h3 class="text-center fw-bold mb-4">📊 DOANH THU NGÀY <span id="current-date">--/--</span></h3>
-            <div class="text-center mb-4">
-                <h1 class="text-success fw-bold" id="total-revenue">0đ</h1>
-            </div>
-            <div id="item-revenue-list">
-                </div>
+        <div class="history-card">
+            <h4 class="fw-bold mb-4 text-secondary">📜 LỊCH SỬ DOANH THU</h4>
+            <div id="history-list"></div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, setDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, setDoc, getDoc, increment, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -58,73 +58,107 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        let firstLoad = true;
-
-        // Lấy ngày hiện tại định dạng DD-MM-YYYY
         const today = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
         document.getElementById('current-date').innerText = today;
 
-        // 1. LẮNG NGHE ĐƠN HÀNG
+        // Hàm xử lý gom nhóm dữ liệu bị lỗi tên món (.amount, .qty)
+        function processReportData(data) {
+            let itemsMap = {};
+            Object.keys(data).forEach(key => {
+                if (key === 'all_total') return;
+                
+                // Tách tên món sạch (ví dụ "BÚN CÁ.qty" -> "BÚN CÁ")
+                let cleanName = key.replace(".amount", "").replace(".qty", "");
+                
+                if (!itemsMap[cleanName]) itemsMap[cleanName] = { name: cleanName, qty: 0, amount: 0 };
+                
+                // Cộng dồn vào tên món tương ứng
+                if (key.includes(".qty")) itemsMap[cleanName].qty += data[key];
+                else if (key.includes(".amount")) itemsMap[cleanName].amount += data[key];
+                else if (typeof data[key] === 'object') { // Hỗ trợ cả cấu trúc cũ nếu có
+                    itemsMap[cleanName].qty += data[key].qty || 0;
+                    itemsMap[cleanName].amount += data[key].amount || 0;
+                }
+            });
+            return Object.values(itemsMap).filter(i => i.qty > 0);
+        }
+
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), (snapshot) => {
             const listChuaLam = document.getElementById('list-chua-lam');
             const listDaXong = document.getElementById('list-da-xong');
             listChuaLam.innerHTML = ""; listDaXong.innerHTML = "";
-
-            if (!firstLoad && snapshot.docChanges().some(change => change.type === "added")) {
-                document.getElementById('notif-sound').play().catch(() => {});
-            }
-            firstLoad = false;
-
             snapshot.forEach((orderDoc) => {
                 const data = orderDoc.data();
-                const monHtml = data.danhSachMon.map(m => `<div>• ${m.name}</div>`).join('');
-                const card = `<div class="order-card">
-                    <div class="fw-bold fs-5 text-danger">BÀN: ${data.ban}</div>
-                    <div class="small text-muted mb-2">${monHtml}</div>
-                    <div class="fw-bold">Tổng: ${Number(data.tongTien).toLocaleString()}đ</div>
+                const card = `<div class="order-card p-3">
+                    <div class="fw-bold text-danger fs-5">BÀN: ${data.ban}</div>
+                    <div class="text-muted my-2">${data.danhSachMon.map(m => `<div>• ${m.name}</div>`).join('')}</div>
+                    <div class="fw-bold text-dark border-top pt-2">Tổng: ${Number(data.tongTien).toLocaleString()}đ</div>
                     ${data.trangThai === "da_xong" 
-                        ? `<button class="btn-pay" onclick="payOrder('${orderDoc.id}', ${JSON.stringify(data)})">THANH TOÁN</button>`
-                        : `<button class="btn-done" onclick="markDone('${orderDoc.id}')">XONG ➔</button>`}
+                        ? `<button class="btn btn-success w-100 mt-2 fw-bold" onclick="thanhToanDon('${orderDoc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')})">THANH TOÁN</button>`
+                        : `<button class="btn btn-primary w-100 mt-2 fw-bold" onclick="hoanThanhMon('${orderDoc.id}')">XONG ➔</button>`}
                 </div>`;
                 data.trangThai === "da_xong" ? listDaXong.innerHTML += card : listChuaLam.innerHTML += card;
             });
         });
 
-        // 2. LẮNG NGHE DOANH THU NGÀY
         onSnapshot(doc(db, "REPORTS", today), (docSnap) => {
+            const list = document.getElementById('item-revenue-list');
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 document.getElementById('total-revenue').innerText = Number(data.all_total || 0).toLocaleString() + "đ";
-                
-                let html = "";
-                // Sắp xếp món theo doanh thu giảm dần
-                Object.keys(data).filter(k => k !== 'all_total').forEach(monName => {
-                    html += `<div class="item-row-report"><span>${monName}</span><b>${data[monName].toLocaleString()}đ</b></div>`;
-                });
-                document.getElementById('item-revenue-list').innerHTML = html;
+                const processedItems = processReportData(data);
+                list.innerHTML = processedItems.map(i => `<tr><td class="text-start ps-3 fw-bold">${i.name}</td><td>${i.qty}</td><td class="text-end pe-3">${i.amount.toLocaleString()}</td></tr>`).join('');
+            } else {
+                document.getElementById('total-revenue').innerText = "0đ";
+                list.innerHTML = "<tr><td colspan='3' class='text-muted'>Chưa có dữ liệu</td></tr>";
             }
         });
 
-        window.markDone = async (id) => { await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" }); };
-
-        window.payOrder = async (id, orderData) => {
-            if(!confirm(`Thanh toán ${Number(orderData.tongTien).toLocaleString()}đ?`)) return;
-
-            const reportRef = doc(db, "REPORTS", today);
-            const updates = { all_total: increment(orderData.tongTien) };
-            
-            // Cộng dồn tiền cho từng món
-            orderData.danhSachMon.forEach(mon => {
-                updates[mon.name] = increment(mon.price);
+        onSnapshot(query(collection(db, "HISTORY"), orderBy("timestamp", "desc"), limit(10)), (snapshot) => {
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = "";
+            snapshot.forEach(docSnap => {
+                const h = docSnap.data();
+                let rows = h.items.map(i => `<tr><td class="text-start ps-2">${i.tenMon}</td><td>${i.soLuong}</td><td class="text-end pe-2">${Number(i.tongTien).toLocaleString()}</td></tr>`).join('');
+                historyList.innerHTML += `<div class="history-item mb-4 border rounded p-3 bg-white">
+                    <div class="fw-bold text-primary mb-2">📅 Ngày: ${h.date_id}</div>
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-secondary"><tr><th>MÓN</th><th>SL</th><th>TIỀN</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div class="text-end fw-bold text-success mt-1">TỔNG DOANH THU: ${Number(h.total).toLocaleString()}đ</div>
+                </div>`;
             });
+        });
 
-            try {
-                await setDoc(reportRef, updates, { merge: true });
-                await deleteDoc(doc(db, "orders", id));
-            } catch (e) { alert("Lỗi lưu doanh thu!"); }
+        window.hoanThanhMon = async (id) => { await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" }); };
+
+        window.thanhToanDon = async (id, data) => {
+            if(!confirm(`Thanh toán Bàn ${data.ban}?`)) return;
+            const reportRef = doc(db, "REPORTS", today);
+            let updates = { all_total: increment(data.tongTien) };
+            data.danhSachMon.forEach(m => {
+                updates[`${m.name}.amount`] = increment(m.price);
+                updates[`${m.name}.qty`] = increment(1);
+            });
+            await setDoc(reportRef, updates, { merge: true });
+            await deleteDoc(doc(db, "orders", id));
         };
 
-        document.body.addEventListener('click', () => { document.getElementById('notif-sound').muted = false; }, {once: true});
+        window.chotSoTaiCho = async () => {
+            const docSnap = await getDoc(doc(db, "REPORTS", today));
+            if (!docSnap.exists() || !docSnap.data().all_total) return alert("Không có doanh thu!");
+            if (!confirm("Chốt sổ và bắt đầu ngày mới?")) return;
+            
+            const processedItems = processReportData(docSnap.data());
+            const itemsToSave = processedItems.map(i => ({ tenMon: i.name, soLuong: i.qty, tongTien: i.amount }));
+
+            try {
+                await setDoc(doc(db, "HISTORY", today), { date_id: today, total: docSnap.data().all_total, items: itemsToSave, timestamp: new Date() });
+                await deleteDoc(doc(db, "REPORTS", today));
+                alert("✅ CHỐT SỔ THÀNH CÔNG!");
+            } catch (e) { alert("Lỗi: " + e.message); }
+        };
     </script>
 </body>
 </html>
