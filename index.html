@@ -6,77 +6,114 @@
     <title>Menu Quán Chung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; padding-bottom: 100px; }
-        .item-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ff4757; color: white; padding: 15px; border-radius: 20px 20px 0 0; display: none; cursor: pointer; }
+        body { background-color: #f8f9fa; padding-bottom: 100px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .item-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .cart-bar { position: fixed; bottom: 20px; left: 10px; right: 10px; background: #ff4757; color: white; padding: 15px; border-radius: 50px; display: none; cursor: pointer; box-shadow: 0 10px 20px rgba(255, 71, 87, 0.3); z-index: 1000; }
+        .btn-add { border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container mt-3">
-        <h3 class="text-center text-danger fw-bold">QUÁN CỦA CHUNG</h3>
-        <p class="text-center">Bàn số: <span id="label-ban" class="badge bg-dark">...</span></p>
-        <div id="menu-list">Đang tải menu...</div>
+        <div class="text-center mb-4">
+            <h2 class="text-danger fw-bold">QUÁN CỦA CHUNG</h2>
+            <div class="badge bg-dark fs-6">Bàn số: <span id="label-ban">Đang xác định...</span></div>
+        </div>
+        
+        <div id="menu-list" class="row">
+            <div class="text-center p-5">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="mt-2">Đang tải danh sách món ăn...</p>
+            </div>
+        </div>
     </div>
 
     <div id="cart-bar" class="cart-bar text-center" onclick="guiDon()">
-        <span id="cart-info">0 món - 0đ</span> | <b>GỬI ĐƠN NGAY</b>
+        <span id="cart-info">0 món - 0đ</span> | <b class="ms-2">GỬI ĐƠN NGAY</b>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = { /* Dán lại mã Config của bạn ở hình 7 vào đây */ };
+        const firebaseConfig = {
+            apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
+            authDomain: "quanbun-6cf3b.firebaseapp.com",
+            projectId: "quanbun-6cf3b",
+            storageBucket: "quanbun-6cf3b.firebasestorage.app",
+            messagingSenderId: "553498423375",
+            appId: "1:553498423375:web:8c1ecdc1b3bd14651e7a3a"
+        };
+
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         let gioHang = [];
-        const table = new URLSearchParams(window.location.search).get('table') || "Chưa rõ";
-        document.getElementById('label-ban').innerText = table;
+        // Lấy số bàn (chấp nhận cả ?table= hoặc ?TABLE=)
+        const urlParams = new URLSearchParams(window.location.search);
+        let tableNum = urlParams.get('table') || urlParams.get('TABLE') || "Chưa rõ";
+        document.getElementById('label-ban').innerText = tableNum;
 
         async function loadMenu() {
-            const querySnapshot = await getDocs(collection(db, "MENU"));
-            const container = document.getElementById('menu-list');
-            container.innerHTML = "";
-            querySnapshot.forEach((doc) => {
-                const item = doc.data();
-                const div = document.createElement('div');
-                div.className = "item-card d-flex justify-content-between align-items-center";
-                div.innerHTML = `<div><b>${item.NAME}</b><br><span class="text-danger">${Number(item['THÀNH TIỀN']).toLocaleString()}đ</span></div>
-                                 <button class="btn btn-outline-danger btn-sm" onclick="themMon('${item.NAME}', ${item['THÀNH TIỀN']})">+</button>`;
-                container.appendChild(div);
-            });
+            try {
+                const querySnapshot = await getDocs(collection(db, "MENU"));
+                const container = document.getElementById('menu-list');
+                container.innerHTML = "";
+                
+                querySnapshot.forEach((doc) => {
+                    const item = doc.data();
+                    const tenMon = item.NAME || "Không tên";
+                    const giaMon = item['THÀNH TIỀN'] || 0;
+                    
+                    const col = document.createElement('div');
+                    col.className = "col-12 col-md-6";
+                    col.innerHTML = `
+                        <div class="item-card d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold fs-5">${tenMon}</div>
+                                <div class="text-danger">${Number(giaMon).toLocaleString()}đ</div>
+                            </div>
+                            <button class="btn btn-danger btn-add" onclick="themMon('${tenMon}', ${giaMon})">+</button>
+                        </div>`;
+                    container.appendChild(col);
+                });
+            } catch (e) {
+                document.getElementById('menu-list').innerHTML = "<p class='text-center'>Lỗi kết nối dữ liệu!</p>";
+            }
         }
 
         window.themMon = (name, price) => {
             gioHang.push({ name, price });
-            updateCart();
-        };
-
-        function updateCart() {
             const bar = document.getElementById('cart-bar');
-            if (gioHang.length > 0) {
-                bar.style.display = 'block';
-                const tongTien = gioHang.reduce((sum, item) => sum + item.price, 0);
-                document.getElementById('cart-info').innerText = `${gioHang.length} món - ${tongTien.toLocaleString()}đ`;
-            }
-        }
+            bar.style.display = 'block';
+            const tongTien = gioHang.reduce((sum, item) => sum + item.price, 0);
+            document.getElementById('cart-info').innerText = `${gioHang.length} món - ${tongTien.toLocaleString()}đ`;
+        };
 
         window.guiDon = async () => {
-            if (confirm("Bạn xác nhận gửi đơn hàng này chứ?")) {
+            if (gioHang.length === 0) return;
+            const btn = document.getElementById('cart-bar');
+            btn.style.pointerEvents = 'none';
+            btn.innerHTML = "ĐANG GỬI...";
+
+            try {
                 const tongTien = gioHang.reduce((sum, item) => sum + item.price, 0);
                 await addDoc(collection(db, "orders"), {
-                    ban: table,
-                    danhSachMon: gioHang, // Gửi cả mảng món ăn
+                    ban: tableNum,
+                    danhSachMon: gioHang,
                     tongTien: tongTien,
-                    thoiGian: serverTimestamp(),
-                    trangThai: "Chờ"
+                    thoiGian: serverTimestamp()
                 });
-                alert("Đã gửi đơn! Vui lòng đợi trong giây lát.");
+                alert("Đã gửi đơn thành công! Quán đang chuẩn bị món cho bạn.");
                 gioHang = [];
-                document.getElementById('cart-bar').style.display = 'none';
+                btn.style.display = 'none';
+                btn.style.pointerEvents = 'auto';
+                btn.innerHTML = '0 món - 0đ | <b>GỬI ĐƠN NGAY</b>';
+            } catch (e) {
+                alert("Lỗi khi gửi đơn, vui lòng thử lại!");
+                btn.style.pointerEvents = 'auto';
             }
         };
+
         loadMenu();
     </script>
 </body>
