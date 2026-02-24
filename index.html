@@ -6,45 +6,42 @@
     <title>Đặt Món - Quán Chung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-bottom: 100px; }
-        .menu-item { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; }
-        .cart-sticky { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; }
-        .qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #ddd; background: white; font-weight: bold; }
+        body { background: #f8f9fa; padding-bottom: 120px; font-family: sans-serif; }
+        .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .cart-sticky { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
+        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container py-3">
-        <h3 class="text-center fw-bold text-danger mb-4">🍜 THỰC ĐƠN QUÁN CHUNG</h3>
+        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN CHUNG</h3>
         
-        <div class="mb-3">
-            <label class="fw-bold">Chọn số bàn:</label>
-            <select id="so-ban" class="form-select form-select-lg border-danger">
-                <option value="01">Bàn 01</option><option value="02">Bàn 02</option>
-                <option value="03">Bàn 03</option><option value="04">Bàn 04</option>
-                <option value="05">Bàn 05</option>
-            </select>
+        <div class="card p-3 mb-4 shadow-sm border-0">
+            <label class="fw-bold mb-2 text-secondary small text-uppercase">Tên đại diện hoặc Tên của bạn:</label>
+            <input type="text" id="ten-khach" class="form-control form-control-lg border-danger" placeholder="Nhập tên tại đây..." required>
+            <small class="text-muted mt-1">* Một bàn có thể đặt nhiều tên khác nhau.</small>
         </div>
 
         <div id="menu-list">
             <div class="menu-item d-flex justify-content-between align-items-center" onclick="addToCart('BÚN CÁ', 30000)">
-                <div><div class="fw-bold">BÚN CÁ</div><div class="text-muted small">30.000đ</div></div>
-                <button class="btn btn-danger btn-sm rounded-pill">+ Chọn</button>
+                <div><div class="fw-bold">BÚN CÁ</div><div class="text-danger">30.000đ</div></div>
+                <button class="btn btn-outline-danger btn-sm rounded-pill">+ Thêm</button>
             </div>
             <div class="menu-item d-flex justify-content-between align-items-center" onclick="addToCart('BÚN SỨA', 35000)">
-                <div><div class="fw-bold">BÚN SỨA</div><div class="text-muted small">35.000đ</div></div>
-                <button class="btn btn-danger btn-sm rounded-pill">+ Chọn</button>
+                <div><div class="fw-bold">BÚN SỨA</div><div class="text-danger">35.000đ</div></div>
+                <button class="btn btn-outline-danger btn-sm rounded-pill">+ Thêm</button>
             </div>
             <div class="menu-item d-flex justify-content-between align-items-center" onclick="addToCart('BÁNH CANH CHẢ CÁ', 30000)">
-                <div><div class="fw-bold">BÁNH CANH CHẢ CÁ</div><div class="text-muted small">30.000đ</div></div>
-                <button class="btn btn-danger btn-sm rounded-pill">+ Chọn</button>
+                <div><div class="fw-bold">BÁNH CANH CHẢ CÁ</div><div class="text-danger">30.000đ</div></div>
+                <button class="btn btn-outline-danger btn-sm rounded-pill">+ Thêm</button>
             </div>
         </div>
 
         <div class="cart-sticky">
-            <div id="cart-content" class="mb-2"></div>
+            <div id="cart-content" class="mb-2" style="max-height: 150px; overflow-y: auto;"></div>
             <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Tổng: <span id="total-price" class="text-danger fw-bold">0đ</span></h5>
-                <button class="btn btn-danger fw-bold px-4" onclick="sendOrder()">GỬI ĐƠN NGAY</button>
+                <div><small class="text-muted">Tổng cộng:</small><h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4></div>
+                <button class="btn btn-danger btn-lg fw-bold px-4" onclick="sendOrder()">GỬI ĐƠN</button>
             </div>
         </div>
     </div>
@@ -61,7 +58,6 @@
             messagingSenderId: "553498423375",
             appId: "1:553498423375:web:8c1ecdc1b3bd14651e7a3a"
         };
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
@@ -86,11 +82,11 @@
             Object.values(cart).forEach(item => {
                 total += item.price * item.qty;
                 container.innerHTML += `
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small fw-bold">${item.name}</span>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">${item.name}</span>
                         <div class="d-flex align-items-center">
                             <button class="qty-btn" onclick="updateQty('${item.name}', -1)">-</button>
-                            <span class="mx-2">${item.qty}</span>
+                            <b class="mx-3">${item.qty}</b>
                             <button class="qty-btn" onclick="updateQty('${item.name}', 1)">+</button>
                         </div>
                     </div>`;
@@ -99,21 +95,23 @@
         }
 
         window.sendOrder = async () => {
+            const tenKhach = document.getElementById('ten-khach').value.trim();
             const items = Object.values(cart);
-            if (items.length === 0) return alert("Vui lòng chọn món!");
-            
-            const total = items.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            if (!tenKhach) return alert("Vui lòng nhập tên của bạn!");
+            if (items.length === 0) return alert("Vui lòng chọn ít nhất 1 món!");
+
             try {
                 await addDoc(collection(db, "orders"), {
-                    ban: document.getElementById('so-ban').value,
+                    khach: tenKhach,
                     danhSachMon: items,
-                    tongTien: total,
+                    tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
                     trangThai: "cho_lam",
                     thoiGian: new Date()
                 });
-                alert("Đã gửi đơn thành công!");
+                alert("Đã gửi đơn! Chúc bạn ngon miệng.");
                 cart = {}; renderCart();
-            } catch (e) { alert("Lỗi gửi đơn!"); }
+                document.getElementById('ten-khach').value = "";
+            } catch (e) { alert("Lỗi khi gửi đơn."); }
         };
     </script>
 </body>
