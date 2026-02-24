@@ -6,49 +6,36 @@
     <title>Đặt Món - Quán Chung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-bottom: 120px; font-family: sans-serif; }
-        .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .cart-sticky { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
-        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; }
+        body { background: #f8f9fa; padding-bottom: 110px; }
+        .menu-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; }
+        .qty-ctrl { width: 30px; height: 30px; border: 1px solid #dc3545; background: white; color: #dc3545; border-radius: 50%; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container py-3">
-        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN CHUNG</h3>
+        <h3 class="text-center fw-bold text-danger mb-4">🍜 THỰC ĐƠN QUÁN CHUNG</h3>
         
-        <div class="card p-3 mb-4 shadow-sm border-0">
-            <label class="fw-bold mb-2 text-secondary small text-uppercase">Tên đại diện hoặc Tên của bạn:</label>
-            <input type="text" id="ten-khach" class="form-control form-control-lg border-danger" placeholder="Nhập tên tại đây..." required>
-            <small class="text-muted mt-1">* Một bàn có thể đặt nhiều tên khác nhau.</small>
+        <div class="mb-4">
+            <input type="text" id="khach-name" class="form-control form-control-lg border-danger" placeholder="Nhập tên của bạn...">
         </div>
 
-        <div id="menu-list">
-            <div class="menu-item d-flex justify-content-between align-items-center" onclick="addToCart('BÚN CÁ', 30000)">
-                <div><div class="fw-bold">BÚN CÁ</div><div class="text-danger">30.000đ</div></div>
-                <button class="btn btn-outline-danger btn-sm rounded-pill">+ Thêm</button>
-            </div>
-            <div class="menu-item d-flex justify-content-between align-items-center" onclick="addToCart('BÚN SỨA', 35000)">
-                <div><div class="fw-bold">BÚN SỨA</div><div class="text-danger">35.000đ</div></div>
-                <button class="btn btn-outline-danger btn-sm rounded-pill">+ Thêm</button>
-            </div>
-            <div class="menu-item d-flex justify-content-between align-items-center" onclick="addToCart('BÁNH CANH CHẢ CÁ', 30000)">
-                <div><div class="fw-bold">BÁNH CANH CHẢ CÁ</div><div class="text-danger">30.000đ</div></div>
-                <button class="btn btn-outline-danger btn-sm rounded-pill">+ Thêm</button>
-            </div>
+        <div id="realtime-menu">
+            <div class="text-center text-muted">Đang lấy thực đơn mới nhất...</div>
         </div>
 
-        <div class="cart-sticky">
-            <div id="cart-content" class="mb-2" style="max-height: 150px; overflow-y: auto;"></div>
+        <div class="cart-bar">
+            <div id="cart-list" class="mb-2" style="max-height: 100px; overflow-y: auto;"></div>
             <div class="d-flex justify-content-between align-items-center">
-                <div><small class="text-muted">Tổng cộng:</small><h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4></div>
-                <button class="btn btn-danger btn-lg fw-bold px-4" onclick="sendOrder()">GỬI ĐƠN</button>
+                <h4 id="total-view" class="text-danger fw-bold mb-0">0đ</h4>
+                <button class="btn btn-danger btn-lg px-4 fw-bold" onclick="submitOrder()">ĐẶT MÓN</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -61,57 +48,62 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let cart = {};
+        let myCart = {};
 
-        window.addToCart = (name, price) => {
-            if (cart[name]) cart[name].qty += 1;
-            else cart[name] = { name, price, qty: 1 };
-            renderCart();
+        // LẮNG NGHE THỰC ĐƠN TỪ ADMIN
+        onSnapshot(collection(db, "MENU"), (snap) => {
+            const menuDiv = document.getElementById('realtime-menu');
+            menuDiv.innerHTML = "";
+            snap.forEach(d => {
+                const item = d.data();
+                menuDiv.innerHTML += `
+                    <div class="menu-card d-flex justify-content-between align-items-center" onclick="changeQty('${item.name}', ${item.price}, 1)">
+                        <div><div class="fw-bold">${item.name}</div><div class="text-danger small">${item.price.toLocaleString()}đ</div></div>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3">+ Thêm</button>
+                    </div>`;
+            });
+        });
+
+        window.changeQty = (name, price, num) => {
+            if (!myCart[name]) myCart[name] = { name, price, qty: 0 };
+            myCart[name].qty += num;
+            if (myCart[name].qty <= 0) delete myCart[name];
+            updateUI();
         };
 
-        window.updateQty = (name, change) => {
-            cart[name].qty += change;
-            if (cart[name].qty <= 0) delete cart[name];
-            renderCart();
-        };
-
-        function renderCart() {
-            const container = document.getElementById('cart-content');
-            container.innerHTML = "";
+        function updateUI() {
+            const list = document.getElementById('cart-list');
+            list.innerHTML = "";
             let total = 0;
-            Object.values(cart).forEach(item => {
-                total += item.price * item.qty;
-                container.innerHTML += `
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold">${item.name}</span>
-                        <div class="d-flex align-items-center">
-                            <button class="qty-btn" onclick="updateQty('${item.name}', -1)">-</button>
-                            <b class="mx-3">${item.qty}</b>
-                            <button class="qty-btn" onclick="updateQty('${item.name}', 1)">+</button>
+            Object.values(myCart).forEach(i => {
+                total += i.price * i.qty;
+                list.innerHTML += `
+                    <div class="d-flex justify-content-between mb-1 small">
+                        <span>${i.name}</span>
+                        <div>
+                            <button class="qty-ctrl" onclick="changeQty('${i.name}', ${i.price}, -1)">-</button>
+                            <span class="mx-2">${i.qty}</span>
+                            <button class="qty-ctrl" onclick="changeQty('${i.name}', ${i.price}, 1)">+</button>
                         </div>
                     </div>`;
             });
-            document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
+            document.getElementById('total-view').innerText = total.toLocaleString() + "đ";
         }
 
-        window.sendOrder = async () => {
-            const tenKhach = document.getElementById('ten-khach').value.trim();
-            const items = Object.values(cart);
-            if (!tenKhach) return alert("Vui lòng nhập tên của bạn!");
-            if (items.length === 0) return alert("Vui lòng chọn ít nhất 1 món!");
-
-            try {
-                await addDoc(collection(db, "orders"), {
-                    khach: tenKhach,
-                    danhSachMon: items,
-                    tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
-                    trangThai: "cho_lam",
-                    thoiGian: new Date()
-                });
-                alert("Đã gửi đơn! Chúc bạn ngon miệng.");
-                cart = {}; renderCart();
-                document.getElementById('ten-khach').value = "";
-            } catch (e) { alert("Lỗi khi gửi đơn."); }
+        window.submitOrder = async () => {
+            const name = document.getElementById('khach-name').value.trim();
+            const items = Object.values(myCart);
+            if (!name || items.length === 0) return alert("Vui lòng nhập tên và chọn món!");
+            
+            await addDoc(collection(db, "orders"), {
+                khach: name,
+                danhSachMon: items,
+                tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
+                trangThai: "cho_lam",
+                thoiGian: new Date()
+            });
+            alert("Đã gửi đơn thành công!");
+            myCart = {}; updateUI(); document.getElementById('khach-name').value = "";
         };
     </script>
 </body>
