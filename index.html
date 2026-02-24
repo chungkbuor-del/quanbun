@@ -4,24 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu Quán Chung</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; padding-bottom: 100px; }
-        .item-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .cart-bar { position: fixed; bottom: 20px; left: 10px; right: 10px; background: #ff4757; color: white; padding: 15px; border-radius: 50px; display: none; cursor: pointer; z-index: 1000; }
+        body { background-color: #f0f2f5; padding-bottom: 100px; }
+        .header-title { color: #dc3545; font-weight: bold; margin-top: 20px; }
+        .table-label { background: #6c757d; color: white; border-radius: 5px; padding: 3px 10px; font-size: 0.9rem; }
+        .item-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .price { color: #dc3545; font-weight: bold; }
+        .btn-add { background-color: #ff4757; color: white; border: none; border-radius: 8px; padding: 5px 15px; font-weight: bold; }
+        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ff4757; color: white; padding: 15px; border-radius: 15px 15px 0 0; display: none; cursor: pointer; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="container mt-3">
-        <div class="text-center mb-4">
-            <h2 class="text-danger fw-bold">QUÁN CỦA CHUNG</h2>
-            <div class="badge bg-dark fs-6">Bàn số: <span id="label-ban">...</span></div>
+    <div class="container">
+        <h2 class="text-center header-title">QUÁN CỦA CHUNG</h2>
+        <div class="text-center mb-3">
+            <span class="table-label">Đang ngồi bàn: <span id="label-ban">...</span></span>
         </div>
-        <div id="menu-list" class="row"></div>
+        <div id="menu-list"></div>
     </div>
 
-    <div id="cart-bar" class="cart-bar text-center" onclick="guiDon()">
-        <span id="cart-info">0 món - 0đ</span> | <b class="ms-2">GỬI ĐƠN NGAY</b>
+    <div id="cart-bar" class="cart-bar" onclick="guiDon()">
+        <span id="cart-info">0 món - 0đ</span> | <b>GỬI ĐƠN NGAY</b>
     </div>
 
     <script type="module">
@@ -42,25 +46,21 @@
         let gioHang = [];
 
         const urlParams = new URLSearchParams(window.location.search);
-        const tableNum = urlParams.get('table') || urlParams.get('TABLE') || "Chưa rõ";
-        document.getElementById('label-ban').innerText = tableNum;
+        const table = urlParams.get('table') || urlParams.get('TABLE') || "Chưa rõ";
+        document.getElementById('label-ban').innerText = table;
 
         async function loadMenu() {
-            try {
-                const querySnapshot = await getDocs(collection(db, "MENU"));
-                const container = document.getElementById('menu-list');
-                container.innerHTML = "";
-                querySnapshot.forEach((doc) => {
-                    const item = doc.data();
-                    const div = document.createElement('div');
-                    div.className = "col-12 col-md-6";
-                    div.innerHTML = `<div class="item-card d-flex justify-content-between align-items-center">
-                        <div><b>${item.NAME}</b><br><span class="text-danger">${Number(item['THÀNH TIỀN']).toLocaleString()}đ</span></div>
-                        <button class="btn btn-danger btn-sm" onclick="themMon('${item.NAME}', ${item['THÀNH TIỀN']})">+</button>
-                    </div>`;
-                    container.appendChild(div);
-                });
-            } catch (e) { console.error(e); }
+            const querySnapshot = await getDocs(collection(db, "MENU"));
+            const container = document.getElementById('menu-list');
+            container.innerHTML = "";
+            querySnapshot.forEach((doc) => {
+                const item = doc.data();
+                const div = document.createElement('div');
+                div.className = "item-card d-flex justify-content-between align-items-center";
+                div.innerHTML = `<div><b class="fs-5">${item.NAME}</b><br><span class="price">${Number(item['THÀNH TIỀN']).toLocaleString()}đ</span></div>
+                                 <button class="btn-add" onclick="themMon('${item.NAME}', ${item['THÀNH TIỀN']})">CHỌN</button>`;
+                container.appendChild(div);
+            });
         }
 
         window.themMon = (name, price) => {
@@ -71,19 +71,15 @@
         };
 
         window.guiDon = async () => {
-            const btn = document.getElementById('cart-bar');
-            btn.style.pointerEvents = 'none';
-            btn.innerHTML = "ĐANG GỬI...";
-            try {
-                await addDoc(collection(db, "orders"), {
-                    ban: tableNum,
-                    danhSachMon: gioHang,
-                    tongTien: gioHang.reduce((sum, item) => sum + item.price, 0),
-                    thoiGian: serverTimestamp()
-                });
-                alert("Đã gửi đơn!");
-                location.reload();
-            } catch (e) { alert("Lỗi gửi đơn!"); btn.style.pointerEvents = 'auto'; }
+            if(!confirm("Gửi đơn hàng này tới nhà bếp?")) return;
+            await addDoc(collection(db, "orders"), {
+                ban: table,
+                danhSachMon: gioHang,
+                tongTien: gioHang.reduce((sum, item) => sum + item.price, 0),
+                thoiGian: serverTimestamp()
+            });
+            alert("Đã gửi đơn thành công!");
+            location.reload();
         };
         loadMenu();
     </script>
