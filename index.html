@@ -6,30 +6,37 @@
     <title>Đặt Món - Quán Chung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-bottom: 120px; }
-        .menu-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 8px; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 15px 15px 0 0; }
+        body { background: #f8f9fa; padding-bottom: 150px; }
+        .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
+        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container py-3">
-        <h4 class="text-center fw-bold text-danger mb-3">🍜 THỰC ĐƠN QUÁN CHUNG</h4>
-        <input type="text" id="khach-name" class="form-control mb-3 border-danger" placeholder="Nhập tên bạn...">
+        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN CHUNG</h3>
+        
+        <div class="card p-3 mb-4 border-0 shadow-sm">
+            <label class="fw-bold mb-1 small text-muted">NHẬP TÊN CỦA BẠN:</label>
+            <input type="text" id="ten-khach" class="form-control form-control-lg border-danger" placeholder="Ví dụ: Anh Chung, Chị Lan...">
+        </div>
 
-        <div id="realtime-menu"><div class="text-center text-muted">Đang tải món ăn...</div></div>
+        <div id="display-menu">
+            <div class="text-center p-5 text-muted">Đang tải danh sách món...</div>
+        </div>
 
         <div class="cart-bar">
-            <div id="cart-list" class="mb-2"></div>
-            <div class="d-flex justify-content-between align-items-center">
-                <h4 id="total-view" class="text-danger fw-bold mb-0">0đ</h4>
-                <button class="btn btn-danger btn-lg fw-bold" onclick="submitOrder()">ĐẶT MÓN</button>
+            <div id="cart-details" class="mb-3" style="max-height: 120px; overflow-y: auto;"></div>
+            <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                <div><small class="text-muted">Tổng cộng:</small><h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4></div>
+                <button class="btn btn-danger btn-lg fw-bold px-4" onclick="guiDonHang()">GỬI ĐƠN</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -42,56 +49,65 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let myCart = {};
+        let cart = {};
 
-        // LẤY THỰC ĐƠN (SỬA LỖI KHÔNG HIỆN)
-        onSnapshot(query(collection(db, "MENU")), (snap) => {
-            const menuDiv = document.getElementById('realtime-menu');
-            if (snap.empty) {
-                menuDiv.innerHTML = "<div class='text-center'>Chưa có món nào. Vui lòng thêm bên Admin!</div>";
-                return;
-            }
+        // 1. Tải thực đơn từ Admin
+        onSnapshot(collection(db, "MENU"), (snap) => {
+            const menuDiv = document.getElementById('display-menu');
             menuDiv.innerHTML = "";
             snap.forEach(d => {
                 const item = d.data();
                 menuDiv.innerHTML += `
-                    <div class="menu-card d-flex justify-content-between align-items-center" onclick="changeQty('${item.name}', ${item.price}, 1)">
-                        <div><div class="fw-bold">${item.name}</div><div class="text-danger small">${item.price.toLocaleString()}đ</div></div>
-                        <button class="btn btn-sm btn-danger rounded-pill">+ Thêm</button>
+                    <div class="menu-item d-flex justify-content-between align-items-center" onclick="updateCart('${item.name}', ${item.price}, 1)">
+                        <div><div class="fw-bold">${item.name}</div><div class="text-danger">${item.price.toLocaleString()}đ</div></div>
+                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3">+ Thêm</button>
                     </div>`;
             });
         });
 
-        window.changeQty = (name, price, num) => {
-            if (!myCart[name]) myCart[name] = { name, price, qty: 0 };
-            myCart[name].qty += num;
-            if (myCart[name].qty <= 0) delete myCart[name];
-            updateUI();
+        // 2. Xử lý giỏ hàng (+/-)
+        window.updateCart = (name, price, change) => {
+            if (!cart[name]) cart[name] = { name, price, qty: 0 };
+            cart[name].qty += change;
+            if (cart[name].qty <= 0) delete cart[name];
+            renderUI();
         };
 
-        function updateUI() {
-            const list = document.getElementById('cart-list');
+        function renderUI() {
+            const list = document.getElementById('cart-details');
             list.innerHTML = "";
             let total = 0;
-            Object.values(myCart).forEach(i => {
-                total += i.price * i.qty;
-                list.innerHTML += `<div class="d-flex justify-content-between small"><span>${i.name} x${i.qty}</span><span>${(i.price*i.qty).toLocaleString()}</span></div>`;
+            Object.values(cart).forEach(item => {
+                total += item.price * item.qty;
+                list.innerHTML += `
+                    <div class="d-flex justify-content-between align-items-center mb-2 bg-light p-2 rounded">
+                        <span class="fw-bold small">${item.name}</span>
+                        <div class="d-flex align-items-center">
+                            <button class="qty-btn" onclick="event.stopPropagation(); updateCart('${item.name}', ${item.price}, -1)">-</button>
+                            <b class="mx-3">${item.qty}</b>
+                            <button class="qty-btn" onclick="event.stopPropagation(); updateCart('${item.name}', ${item.price}, 1)">+</button>
+                        </div>
+                    </div>`;
             });
-            document.getElementById('total-view').innerText = total.toLocaleString() + "đ";
+            document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
         }
 
-        window.submitOrder = async () => {
-            const name = document.getElementById('khach-name').value.trim();
-            const items = Object.values(myCart);
-            if (!name || items.length === 0) return alert("Nhập tên và chọn món!");
+        // 3. Gửi đơn
+        window.guiDonHang = async () => {
+            const ten = document.getElementById('ten-khach').value.trim();
+            const items = Object.values(cart);
+            if (!ten) return alert("Vui lòng nhập tên bạn!");
+            if (items.length === 0) return alert("Bạn chưa chọn món!");
+
             await addDoc(collection(db, "orders"), {
-                khach: name,
+                khach: ten,
                 danhSachMon: items,
                 tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
                 trangThai: "cho_lam",
                 thoiGian: new Date()
             });
-            alert("Đã gửi đơn!"); myCart = {}; updateUI();
+            alert("Đã gửi đơn thành công!");
+            cart = {}; renderUI();
         };
     </script>
 </body>
