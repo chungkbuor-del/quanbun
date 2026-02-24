@@ -2,28 +2,51 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Quản lý Đơn hàng - Quán Chung</title>
+    <title>Quản lý & Doanh thu - Quán Chung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #1a2a3a; color: white; padding: 20px; font-family: sans-serif; }
-        .order-card { background: #2c3e50; border-radius: 15px; padding: 20px; margin-bottom: 20px; border-left: 8px solid #2ecc71; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .item-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #5d6d7e; padding: 5px 0; }
-        .table-badge { background: #e74c3c; padding: 5px 15px; border-radius: 5px; font-weight: bold; font-size: 1.2rem; }
+        body { background-color: #f0f2f5; padding: 20px; font-family: sans-serif; }
+        .admin-title { color: #dc3545; font-weight: bold; text-align: center; margin-bottom: 20px; }
+        .section-title { background: #dc3545; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; }
+        .order-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: none; }
+        .report-card { background: #fff; border-radius: 12px; padding: 20px; border-top: 5px solid #ffc107; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-done { background-color: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 8px; margin-top: 10px; }
+        .btn-pay { background-color: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 8px; margin-top: 10px; }
+        .item-row-report { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 class="text-center mb-4">🔔 ĐƠN HÀNG THEO BÀN</h2>
-        <div id="admin-list" class="row">
-            <p class="text-center">Đang kiểm tra đơn hàng mới...</p>
+        <h2 class="admin-title">🔔 QUẢN LÝ QUÁN CHUNG</h2>
+        <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <div class="section-title text-center">♨️ CHƯA LÀM</div>
+                <div id="list-chua-lam"></div>
+            </div>
+            <div class="col-md-6">
+                <div class="section-title text-center" style="background: #28a745;">✅ ĐÃ XONG</div>
+                <div id="list-da-xong"></div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="report-card mt-4">
+            <h3 class="text-center fw-bold mb-4">📊 DOANH THU NGÀY <span id="current-date">--/--</span></h3>
+            <div class="text-center mb-4">
+                <h1 class="text-success fw-bold" id="total-revenue">0đ</h1>
+            </div>
+            <div id="item-revenue-list">
+                </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, setDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Mã kết nối của bạn
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
             authDomain: "quanbun-6cf3b.firebaseapp.com",
@@ -35,55 +58,73 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        let firstLoad = true;
 
-        // Lắng nghe dữ liệu từ collection "orders"
-        const q = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
-        
-        onSnapshot(q, (snapshot) => {
-            const container = document.getElementById('admin-list');
-            container.innerHTML = "";
-            
-            if (snapshot.empty) {
-                container.innerHTML = "<h4 class='text-center text-secondary mt-5'>Hiện tại chưa có đơn hàng nào mới.</h4>";
-                return;
+        // Lấy ngày hiện tại định dạng DD-MM-YYYY
+        const today = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
+        document.getElementById('current-date').innerText = today;
+
+        // 1. LẮNG NGHE ĐƠN HÀNG
+        onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), (snapshot) => {
+            const listChuaLam = document.getElementById('list-chua-lam');
+            const listDaXong = document.getElementById('list-da-xong');
+            listChuaLam.innerHTML = ""; listDaXong.innerHTML = "";
+
+            if (!firstLoad && snapshot.docChanges().some(change => change.type === "added")) {
+                document.getElementById('notif-sound').play().catch(() => {});
             }
+            firstLoad = false;
 
             snapshot.forEach((orderDoc) => {
                 const data = orderDoc.data();
-                const id = orderDoc.id;
-                
-                // Tạo danh sách món ăn
-                let itemsHtml = "";
-                if (data.danhSachMon) {
-                    data.danhSachMon.forEach(mon => {
-                        itemsHtml += `<div class="item-row"><span>${mon.name}</span><b>${Number(mon.price).toLocaleString()}đ</b></div>`;
-                    });
-                }
-
-                container.innerHTML += `
-                    <div class="col-12 col-md-6">
-                        <div class="order-card">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="table-badge">BÀN: ${data.ban || '??'}</span>
-                                <small class="text-info">${data.thoiGian ? new Date(data.thoiGian.seconds * 1000).toLocaleTimeString() : 'Vừa xong'}</small>
-                            </div>
-                            <div class="mb-3">${itemsHtml}</div>
-                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-                                <h4 class="text-warning mb-0">TỔNG: ${Number(data.tongTien).toLocaleString()}đ</h4>
-                                <button class="btn btn-success fw-bold" onclick="thanhToan('${id}', '${data.ban}', ${data.tongTien})">XONG & THANH TOÁN</button>
-                            </div>
-                        </div>
-                    </div>`;
+                const monHtml = data.danhSachMon.map(m => `<div>• ${m.name}</div>`).join('');
+                const card = `<div class="order-card">
+                    <div class="fw-bold fs-5 text-danger">BÀN: ${data.ban}</div>
+                    <div class="small text-muted mb-2">${monHtml}</div>
+                    <div class="fw-bold">Tổng: ${Number(data.tongTien).toLocaleString()}đ</div>
+                    ${data.trangThai === "da_xong" 
+                        ? `<button class="btn-pay" onclick="payOrder('${orderDoc.id}', ${JSON.stringify(data)})">THANH TOÁN</button>`
+                        : `<button class="btn-done" onclick="markDone('${orderDoc.id}')">XONG ➔</button>`}
+                </div>`;
+                data.trangThai === "da_xong" ? listDaXong.innerHTML += card : listChuaLam.innerHTML += card;
             });
         });
 
-        window.thanhToan = async (id, ban, tien) => {
-            if(confirm(`Xác nhận thanh toán Bàn ${ban} số tiền ${Number(tien).toLocaleString()}đ?`)) {
-                try {
-                    await deleteDoc(doc(db, "orders", id));
-                } catch (e) { alert("Lỗi khi xóa đơn!"); }
+        // 2. LẮNG NGHE DOANH THU NGÀY
+        onSnapshot(doc(db, "REPORTS", today), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('total-revenue').innerText = Number(data.all_total || 0).toLocaleString() + "đ";
+                
+                let html = "";
+                // Sắp xếp món theo doanh thu giảm dần
+                Object.keys(data).filter(k => k !== 'all_total').forEach(monName => {
+                    html += `<div class="item-row-report"><span>${monName}</span><b>${data[monName].toLocaleString()}đ</b></div>`;
+                });
+                document.getElementById('item-revenue-list').innerHTML = html;
             }
+        });
+
+        window.markDone = async (id) => { await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" }); };
+
+        window.payOrder = async (id, orderData) => {
+            if(!confirm(`Thanh toán ${Number(orderData.tongTien).toLocaleString()}đ?`)) return;
+
+            const reportRef = doc(db, "REPORTS", today);
+            const updates = { all_total: increment(orderData.tongTien) };
+            
+            // Cộng dồn tiền cho từng món
+            orderData.danhSachMon.forEach(mon => {
+                updates[mon.name] = increment(mon.price);
+            });
+
+            try {
+                await setDoc(reportRef, updates, { merge: true });
+                await deleteDoc(doc(db, "orders", id));
+            } catch (e) { alert("Lỗi lưu doanh thu!"); }
         };
+
+        document.body.addEventListener('click', () => { document.getElementById('notif-sound').muted = false; }, {once: true});
     </script>
 </body>
 </html>
