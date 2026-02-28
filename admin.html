@@ -9,9 +9,10 @@
         body { background: #f0f2f5; padding: 15px; font-family: sans-serif; }
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        /* Style cho phần dropdown thực đơn */
-        details summary { cursor: pointer; font-weight: bold; color: #0d6efd; outline: none; }
+        /* Style chung cho các thẻ details */
+        details summary { cursor: pointer; font-weight: bold; outline: none; }
         details[open] summary { margin-bottom: 10px; }
+        
         .history-item { font-size: 0.9rem; border-bottom: 1px solid #eee; padding: 5px 0; }
         .badge-status { font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; }
     </style>
@@ -22,7 +23,7 @@
 
         <div class="admin-card border-top border-primary border-4">
             <details>
-                <summary>➕ THỰC ĐƠN (Click để thêm/sửa)</summary>
+                <summary class="text-primary">➕ THỰC ĐƠN (Click để thêm/sửa)</summary>
                 <div class="row g-2 mt-2">
                     <div class="col-7"><input type="text" id="m-name" class="form-control shadow-none" placeholder="Tên món"></div>
                     <div class="col-3"><input type="number" id="m-price" class="form-control shadow-none" placeholder="Giá"></div>
@@ -46,23 +47,25 @@
         </div>
 
         <div class="admin-card border-top border-warning border-4 mt-3">
-            <h5 class="fw-bold text-center">📊 DOANH THU (HÔM NAY)</h5>
-            
-            <table class="table table-bordered table-sm text-center">
-                <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
-                <tbody id="revenue-table"></tbody>
-            </table>
-            
-            <div class="d-flex justify-content-between align-items-center mt-3">
-                <h5 class="text-success fw-bold mb-0">TỔNG: <span id="total-thu">0đ</span></h5>
-                <button class="btn btn-danger btn-sm fw-bold" onclick="chotSoTongHop()" id="btn-chot-so">🚀 CHỐT SỔ</button>
-            </div>
+            <details>
+                <summary class="text-warning text-center fs-5">📊 DOANH THU (HÔM NAY)</summary>
+                
+                <table class="table table-bordered table-sm text-center mt-3">
+                    <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
+                    <tbody id="revenue-table"></tbody>
+                </table>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <h5 class="text-success fw-bold mb-0">TỔNG: <span id="total-thu">0đ</span></h5>
+                    <button class="btn btn-danger btn-sm fw-bold" onclick="chotSoTongHop()" id="btn-chot-so">🚀 CHỐT SỔ</button>
+                </div>
+            </details>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, or } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -97,8 +100,7 @@
         });
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- QUẢN LÝ ĐƠN HÀNG (SỬA LẠI QUERY) ---
-        // Lấy đơn hàng có trangThai là 'cho_xac_nhan' hoặc 'da_xong'
+        // --- QUẢN LÝ ĐƠN HÀNG ---
         const qOrders = query(collection(db, "orders"), 
             where("trangThai", "in", ["cho_xac_nhan", "da_xong"]),
             orderBy("thoiGian", "desc")
@@ -113,7 +115,6 @@
                 const d = docOrder.data();
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 
-                // Hiển thị badge trạng thái cho rõ ràng
                 const statusBadge = d.trangThai === 'cho_xac_nhan' 
                     ? '<span class="badge bg-danger badge-status">Mới</span>' 
                     : '<span class="badge bg-success badge-status">Chờ TT</span>';
@@ -142,7 +143,6 @@
             const orderSnap = await getDoc(orderRef);
             const data = orderSnap.data();
 
-            // 1. Cập nhật doanh thu
             const reportRef = doc(db, "REPORTS", getTodayStr());
             let up = { all_total: increment(data.tongTien) };
             data.danhSachMon.forEach(m => {
@@ -150,8 +150,6 @@
                 up[`${m.name}_amt`] = increment(m.price * m.qty);
             });
             await setDoc(reportRef, up, { merge: true });
-
-            // 2. Chuyển trạng thái
             await updateDoc(orderRef, { trangThai: "da_thanh_toan" });
         };
 
