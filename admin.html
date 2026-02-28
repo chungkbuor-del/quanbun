@@ -28,7 +28,7 @@
     
     <div id="login-page" class="login-card">
         <h3 class="text-center fw-bold text-danger mb-4">🔐 ĐĂNG NHẬP</h3>
-        <input type="email" id="email" class="form-control mb-3" placeholder="Email">
+        <input type="email" id="email" class="form-control mb-3" placeholder="Email (không bắt buộc)">
         <input type="password" id="password" class="form-control mb-3" placeholder="Mật khẩu">
         <button class="btn btn-danger w-100 fw-bold" onclick="login()">ĐĂNG NHẬP</button>
     </div>
@@ -44,7 +44,6 @@
             <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
             <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
             <hr>
-            <div class="admin-menu-item text-danger" onclick="openPage('page-password')">🔑 Đổi mật khẩu</div>
         </div>
 
         <div id="page-menu" class="admin-page">
@@ -78,7 +77,8 @@
             <div class="row g-2 justify-content-center mt-3">
                 <div class="col-4 col-md-3"><input type="date" id="r-start" class="form-control"></div>
                 <div class="col-4 col-md-3"><input type="date" id="r-end" class="form-control"></div>
-                <div class="col-2 col-md-1"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button></div>
+                <div class="col-2 col-md-1"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button>
+                </div>
             </div>
             <div class="row justify-content-center mt-3">
                 <div class="col-12 col-md-8">
@@ -88,15 +88,6 @@
                     </table>
                     <div class="text-end fw-bold fs-4 text-success">TỔNG: <span id="total-thu">0đ</span></div>
                 </div>
-            </div>
-        </div>
-        
-        <div id="page-password" class="admin-page">
-            <span class="close-page-btn" onclick="closePage('page-password')">&times;</span>
-            <h3 class="text-danger text-center">🔑 ĐỔI MẬT KHẨU</h3>
-            <div class="admin-card" style="max-width: 400px; margin: auto;">
-                <input type="password" id="new-password" class="form-control mb-3" placeholder="Mật khẩu mới (ít nhất 6 ký tự)">
-                <button class="btn btn-danger w-100 fw-bold" onclick="changePassword()">CẬP NHẬT MẬT KHẨU</button>
             </div>
         </div>
 
@@ -135,8 +126,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        // NHẬP AUTH Ở ĐÂY
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -148,43 +137,29 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app); 
-        
-        // --- Logic Đăng Nhập ---
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
+
+        // --- ⚠️ CẤU HÌNH MẬT KHẨU TẠI ĐÂY ⚠️ ---
+        const MAT_KHAU_ADMIN = "123456";
+        // ----------------------------------------
+
+        // Logic Đăng Nhập Mới (Không dùng Firebase Auth)
+        window.login = () => {
+            const inputPass = document.getElementById('password').value;
+            if (inputPass === MAT_KHAU_ADMIN) {
                 document.getElementById('login-page').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
                 initApp();
             } else {
-                document.getElementById('login-page').style.display = 'block';
-                document.getElementById('app-content').style.display = 'none';
+                alert("❌ Sai mật khẩu!");
             }
-        });
-
-        window.login = () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            signInWithEmailAndPassword(auth, email, password)
-                .catch((error) => alert("Sai tài khoản hoặc mật khẩu!"));
         };
 
-        window.logout = () => signOut(auth);
+        window.logout = () => {
+            document.getElementById('login-page').style.display = 'block';
+            document.getElementById('app-content').style.display = 'none';
+            document.getElementById('password').value = "";
+        };
         
-        // --- Hàm Đổi Mật Khẩu ---
-        window.changePassword = () => {
-            const newPassword = document.getElementById('new-password').value;
-            if(newPassword.length < 6) return alert("Mật khẩu phải từ 6 ký tự!");
-            
-            const user = auth.currentUser;
-            updatePassword(user, newPassword).then(() => {
-                alert("✅ Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
-                signOut(auth);
-            }).catch((error) => {
-                alert("❌ Lỗi: " + error.message);
-            });
-        };
-
         // --- Logic Khởi tạo (Giữ nguyên) ---
         function initApp() {
             loadHistory(); loadReport();
@@ -209,6 +184,7 @@
             });
         }
         
+        // --- Các hàm hỗ trợ (Giữ nguyên) ---
         let menuItems = [];
         const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
         const now = new Date();
