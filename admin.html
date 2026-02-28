@@ -9,7 +9,6 @@
         body { background: #f0f2f5; font-family: sans-serif; }
         .login-card { max-width: 400px; margin: 100px auto; background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .app-content { display: none; }
-        
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
@@ -28,14 +27,13 @@
     
     <div id="login-page" class="login-card">
         <h3 class="text-center fw-bold text-danger mb-4">🔐 ĐĂNG NHẬP</h3>
-        <input type="email" id="email" class="form-control mb-3" placeholder="Email">
+        <input type="text" id="username" class="form-control mb-3" placeholder="Tên đăng nhập (không quan trọng)">
         <input type="password" id="password" class="form-control mb-3" placeholder="Mật khẩu">
         <button class="btn btn-danger w-100 fw-bold" onclick="login()">ĐĂNG NHẬP</button>
     </div>
 
     <div id="app-content" class="app-content">
         <h3 class="text-center fw-bold text-danger mb-4">🔔 QUẢN LÝ QUÁN <button class="btn btn-sm btn-outline-dark" onclick="logout()">Thoát</button></h3>
-
         <button id="btn-toggle-admin" class="btn btn-dark" onclick="toggleAdminPanel()">≡ Quản Lý</button>
 
         <div id="admin-panel">
@@ -126,7 +124,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -138,33 +135,35 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app);
 
-        // --- Tự động đăng nhập nếu đã có phiên làm việc ---
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // Người dùng đã đăng nhập
-                document.getElementById('login-page').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-                initApp();
-            } else {
-                // Người dùng chưa đăng nhập
-                document.getElementById('login-page').style.display = 'block';
-                document.getElementById('app-content').style.display = 'none';
-            }
-        });
+        // --- ⚠️ THIẾT LẬP MẬT KHẨU CỨNG Ở ĐÂY ⚠️ ---
+        const MAT_KHAU_ADMIN = "123456"; 
+        // ----------------------------------------------
+
+        // Check login on load
+        if(sessionStorage.getItem('isLoggedIn') === 'true') {
+            showApp();
+        }
 
         window.login = () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            signInWithEmailAndPassword(auth, email, password)
-                .catch((error) => {
-                    alert("❌ Sai tài khoản hoặc mật khẩu!");
-                });
+            const inputPass = document.getElementById('password').value;
+            if (inputPass === MAT_KHAU_ADMIN) {
+                sessionStorage.setItem('isLoggedIn', 'true');
+                showApp();
+            } else {
+                alert("❌ Sai mật khẩu!");
+            }
         };
 
+        function showApp() {
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            initApp();
+        }
+
         window.logout = () => {
-            signOut(auth);
+            sessionStorage.removeItem('isLoggedIn');
+            location.reload();
         };
         
         // --- Logic Khởi tạo (Giữ nguyên) ---
