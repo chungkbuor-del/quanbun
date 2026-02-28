@@ -135,11 +135,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- ⚠️ THIẾT LẬP MẬT KHẨU CỨNG Ở ĐÂY ⚠️ ---
+        // --- MẬT KHẨU CỨNG ---
         const MAT_KHAU_ADMIN = "@123123"; 
-        // ----------------------------------------------
 
-        // Check login on load dùng localStorage để nhớ mãi
+        // Check login on load dùng localStorage
         if(localStorage.getItem('isLoggedIn') === 'true') {
             showApp();
         }
@@ -147,7 +146,7 @@
         window.login = () => {
             const inputPass = document.getElementById('password').value;
             if (inputPass === MAT_KHAU_ADMIN) {
-                localStorage.setItem('isLoggedIn', 'true'); // Dùng localStorage
+                localStorage.setItem('isLoggedIn', 'true');
                 showApp();
             } else {
                 alert("❌ Sai mật khẩu!");
@@ -172,8 +171,9 @@
             onSnapshot(collection(db, "MENU"), snap => {
                 const list = document.getElementById('menu-list-admin'); list.innerHTML = ""; menuItems = [];
                 snap.forEach(d => { menuItems.push({id: d.id, ...d.data()}); list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${d.data().name} (${(d.data().price/1000).toFixed(1)}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span></div>`; });
-                // Chỉ thêm input nếu chưa có món nào
-                if(document.querySelectorAll('.order-item-row').length === 0) addOrderItemInput();
+                // Reset input
+                document.getElementById('order-items-input').innerHTML = "";
+                addOrderItemInput();
             });
 
             const qOrders = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
