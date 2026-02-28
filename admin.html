@@ -3,42 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Quán </title>
+    <title>Quản lý Quán</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #f0f2f5; padding: 15px; font-family: sans-serif; }
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        /* Style cho phần dropdown thực đơn */
+        details summary { cursor: pointer; font-weight: bold; color: #0d6efd; outline: none; }
+        details[open] summary { margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <h3 class="text-center fw-bold text-danger mb-4">🔔 QUẢN LÝ QUÁN </h3>
+        <h3 class="text-center fw-bold text-danger mb-4">🔔 QUẢN LÝ QUÁN</h3>
 
         <div class="admin-card border-top border-primary border-4">
-            <h6 class="fw-bold">➕ THỰC ĐƠN (Thêm là hiện bên Order)</h6>
-            <div class="row g-2">
-                <div class="col-7"><input type="text" id="m-name" class="form-control shadow-none" placeholder="Tên món"></div>
-                <div class="col-3"><input type="number" id="m-price" class="form-control shadow-none" placeholder="Giá"></div>
-                <div class="col-2"><button class="btn btn-primary w-100 fw-bold" onclick="themMon()">LƯU</button></div>
-            </div>
-            <div id="menu-list-admin" class="mt-3"></div>
+            <details>
+                <summary>➕ THỰC ĐƠN (Click để thêm/sửa)</summary>
+                <div class="row g-2 mt-2">
+                    <div class="col-7"><input type="text" id="m-name" class="form-control shadow-none" placeholder="Tên món"></div>
+                    <div class="col-3"><input type="number" id="m-price" class="form-control shadow-none" placeholder="Giá"></div>
+                    <div class="col-2"><button class="btn btn-primary w-100 fw-bold" onclick="themMon()">LƯU</button></div>
+                </div>
+                <div id="menu-list-admin" class="mt-3"></div>
+            </details>
         </div>
 
-        <div class="row">
-            <div class="col-6"><div class="badge bg-danger mb-2 w-100 p-2 fs-6">🛒 ĐƠN MỚI</div><div id="list-cho"></div></div>
-            <div class="col-6"><div class="badge bg-success mb-2 w-100 p-2 fs-6">✅ ĐÃ XONG</div><div id="list-xong"></div></div>
+        <div class="admin-card border-top border-info border-4">
+            <h5 class="fw-bold mb-3">🛒 ĐƠN HÀNG</h5>
+            <div class="row">
+                <div class="col-6"><div class="badge bg-danger mb-2 w-100 p-2 fs-6">ĐANG CHỜ</div><div id="list-cho"></div></div>
+                <div class="col-6"><div class="badge bg-success mb-2 w-100 p-2 fs-6">ĐÃ XONG</div><div id="list-xong"></div></div>
+            </div>
         </div>
 
         <div class="admin-card border-top border-warning border-4 mt-3">
-            <h5 class="fw-bold text-center">📊 DOANH THU HÔM NAY</h5>
-            <table class="table table-bordered table-sm text-center mt-3">
-                <thead class="table-light"><tr><th>Món</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
+            <h5 class="fw-bold text-center">📊 DOANH THU</h5>
+            
+            <div class="row g-2 mt-2 mb-3">
+                <div class="col-4">
+                    <select class="form-select form-select-sm" id="view-type">
+                        <option value="today">Hôm nay</option>
+                        <option value="week">Tuần này</option>
+                        <option value="month">Tháng này</option>
+                    </select>
+                </div>
+                <div class="col-8">
+                    <input type="date" id="date-picker" class="form-control form-control-sm">
+                </div>
+            </div>
+
+            <table class="table table-bordered table-sm text-center">
+                <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
                 <tbody id="revenue-table"></tbody>
             </table>
+            
             <div class="d-flex justify-content-between align-items-center mt-3">
-                <h4 class="text-success fw-bold mb-0">TỔNG: <span id="total-thu">0đ</span></h4>
-                <button class="btn btn-danger fw-bold" onclick="chotSoTongHop()" id="btn-chot-so">🚀 CHỐT SỔ & GỬI SHEETS</button>
+                <h5 class="text-success fw-bold mb-0">TỔNG: <span id="total-thu">0đ</span></h5>
+                <button class="btn btn-danger btn-sm fw-bold" onclick="chotSoTongHop()" id="btn-chot-so">🚀 CHỐT SỔ</button>
             </div>
         </div>
     </div>
@@ -57,9 +80,12 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const today = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzejJUM9aKMmJHdPR3vhpdAI-XwTAhFCPQlKDxkaBzAeHmLQIxfXMbz0TsBWzlVynJPcA/exec";
+        
+        // Helper lấy ngày hiện tại
+        const getTodayStr = () => new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
+        let today = getTodayStr();
 
+        // --- QUẢN LÝ THỰC ĐƠN ---
         window.themMon = async () => {
             const name = document.getElementById('m-name').value;
             const price = parseInt(document.getElementById('m-price').value);
@@ -73,20 +99,23 @@
             const list = document.getElementById('menu-list-admin');
             list.innerHTML = "";
             snap.forEach(d => {
-                list.innerHTML += `<span class="badge bg-light text-dark border p-2 me-1 mb-1">${d.data().name} (${d.data().price/1000}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span>`;
+                list.innerHTML += `<span class="badge bg-light text-dark border p-2 me-1 mb-1">${d.data().name} (${(d.data().price/1000).toFixed(1)}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span>`;
             });
         });
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
+        // --- QUẢN LÝ ĐƠN HÀNG ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
-            const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
+            const listCho = document.getElementById('list-cho'); 
+            const listXong = document.getElementById('list-xong');
             listCho.innerHTML = ""; listXong.innerHTML = "";
+            
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 const html = `<div class="order-box">
-                    <div class="fw-bold text-danger fs-5">👤 ${d.khach}</div>
-                    <div class="my-2">${items}</div>
+                    <div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>
+                    <div class="small my-1">${items}</div>
                     <div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>
                     <button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" 
                     onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}', ${JSON.stringify(d).replace(/"/g, '&quot;')})` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>
@@ -96,10 +125,10 @@
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
-
         window.pay = async (id, data) => {
             if(!confirm(`Thanh toán ${data.khach}?`)) return;
-            const ref = doc(db, "REPORTS", today);
+            // Lưu vào REPORTS theo ngày hiện tại
+            const ref = doc(db, "REPORTS", getTodayStr());
             let up = { all_total: increment(data.tongTien) };
             data.danhSachMon.forEach(m => {
                 up[`${m.name}_qty`] = increment(m.qty);
@@ -109,16 +138,20 @@
             await deleteDoc(doc(db, "orders", id));
         };
 
+        // --- DOANH THU ---
+        // Hiện tại chỉ load dữ liệu theo ngày. 
+        // Để làm Tuần/Tháng cần cấu trúc Firestore khác (ví dụ lưu theo từng hóa đơn có ngày tháng)
         onSnapshot(doc(db, "REPORTS", today), dSnap => {
             const table = document.getElementById('revenue-table');
             if(!dSnap.exists()) { table.innerHTML = "<tr><td colspan='3'>Chưa có dữ liệu</td></tr>"; return; }
+            
             const data = dSnap.data();
             document.getElementById('total-thu').innerText = (data.all_total || 0).toLocaleString() + "đ";
             let html = "";
             Object.keys(data).forEach(k => {
                 if(k.endsWith("_qty")) {
                     const name = k.replace("_qty", "");
-                    html += `<tr><td class="text-start fw-bold">${name}</td><td>${data[k]}</td><td class="text-end">${data[name+"_amt"].toLocaleString()}</td></tr>`;
+                    html += `<tr><td class="text-start">${name}</td><td>${data[k]}</td><td class="text-end">${data[name+"_amt"].toLocaleString()}đ</td></tr>`;
                 }
             });
             table.innerHTML = html;
@@ -133,7 +166,6 @@
             btn.disabled = true;
             const data = docSnap.data();
             
-            // Gom dữ liệu sạch để gửi Google Sheets
             let finalItems = [];
             Object.keys(data).forEach(k => {
                 if(k.endsWith("_qty")) {
@@ -142,6 +174,8 @@
                 }
             });
 
+            // WEB_APP_URL giữ nguyên từ code cũ của bạn
+            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzejJUM9aKMmJHdPR3vhpdAI-XwTAhFCPQlKDxkaBzAeHmLQIxfXMbz0TsBWzlVynJPcA/exec";
             try {
                 await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ ngay: today, details: finalItems }) });
                 await deleteDoc(doc(db, "REPORTS", today));
@@ -151,5 +185,3 @@
     </script>
 </body>
 </html>
-
-
