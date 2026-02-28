@@ -27,7 +27,6 @@
     
     <div id="login-page" class="login-card">
         <h3 class="text-center fw-bold text-danger mb-4">🔐 ĐĂNG NHẬP</h3>
-        <input type="text" id="username" class="form-control mb-3" placeholder="Tên đăng nhập (không quan trọng)">
         <input type="password" id="password" class="form-control mb-3" placeholder="Mật khẩu">
         <button class="btn btn-danger w-100 fw-bold" onclick="login()">ĐĂNG NHẬP</button>
     </div>
@@ -140,15 +139,15 @@
         const MAT_KHAU_ADMIN = "@123123"; 
         // ----------------------------------------------
 
-        // Check login on load
-        if(sessionStorage.getItem('isLoggedIn') === 'true') {
+        // Check login on load dùng localStorage để nhớ mãi
+        if(localStorage.getItem('isLoggedIn') === 'true') {
             showApp();
         }
 
         window.login = () => {
             const inputPass = document.getElementById('password').value;
             if (inputPass === MAT_KHAU_ADMIN) {
-                sessionStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('isLoggedIn', 'true'); // Dùng localStorage
                 showApp();
             } else {
                 alert("❌ Sai mật khẩu!");
@@ -162,18 +161,19 @@
         }
 
         window.logout = () => {
-            sessionStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('isLoggedIn');
             location.reload();
         };
         
-        // --- Logic Khởi tạo (Giữ nguyên) ---
+        // --- Logic Khởi tạo ---
         function initApp() {
             loadHistory(); loadReport();
             
             onSnapshot(collection(db, "MENU"), snap => {
                 const list = document.getElementById('menu-list-admin'); list.innerHTML = ""; menuItems = [];
                 snap.forEach(d => { menuItems.push({id: d.id, ...d.data()}); list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${d.data().name} (${(d.data().price/1000).toFixed(1)}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span></div>`; });
-                addOrderItemInput();
+                // Chỉ thêm input nếu chưa có món nào
+                if(document.querySelectorAll('.order-item-row').length === 0) addOrderItemInput();
             });
 
             const qOrders = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
@@ -190,7 +190,7 @@
             });
         }
         
-        // --- Các hàm hỗ trợ (Giữ nguyên) ---
+        // --- Các hàm hỗ trợ ---
         let menuItems = [];
         const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
         const now = new Date();
@@ -220,4 +220,3 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
