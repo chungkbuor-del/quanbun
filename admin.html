@@ -12,7 +12,6 @@
         details summary { cursor: pointer; font-weight: bold; outline: none; }
         details[open] summary { margin-bottom: 10px; }
         .history-item { font-size: 0.9rem; border-bottom: 1px solid #eee; padding: 5px 0; }
-        .badge-status { font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -40,36 +39,30 @@
         </div>
 
         <div class="admin-card border-top border-secondary border-4">
-            <h5 class="fw-bold mb-3">🔍 TÌM KIẾM DỮ LIỆU THEO KHOẢNG THỜI GIAN</h5>
+            <h5 class="fw-bold mb-3">📜 TÌM KIẾM LỊCH SỬ ĐƠN HÀNG</h5>
             <div class="row g-2 mb-3">
-                <div class="col-5">
-                    <label class="small text-muted">Từ ngày</label>
-                    <input type="date" id="date-start" class="form-control">
-                </div>
-                <div class="col-5">
-                    <label class="small text-muted">Đến ngày</label>
-                    <input type="date" id="date-end" class="form-control">
-                </div>
-                <div class="col-2 d-flex align-items-end">
-                    <button class="btn btn-secondary w-100 fw-bold" onclick="loadDataByRange()">TÌM</button>
-                </div>
+                <div class="col-5"><input type="date" id="h-start" class="form-control"></div>
+                <div class="col-5"><input type="date" id="h-end" class="form-control"></div>
+                <div class="col-2"><button class="btn btn-secondary w-100 fw-bold" onclick="loadHistory()">TÌM</button></div>
+            </div>
+            <div id="list-history" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="admin-card border-top border-warning border-4">
+            <h5 class="fw-bold mb-3">📊 TÌM KIẾM BÁO CÁO DOANH THU</h5>
+            <div class="row g-2 mb-3">
+                <div class="col-5"><input type="date" id="r-start" class="form-control"></div>
+                <div class="col-5"><input type="date" id="r-end" class="form-control"></div>
+                <div class="col-2"><button class="btn btn-warning w-100 fw-bold" onclick="loadReport()">TÌM</button></div>
             </div>
             
-            <details open>
-                <summary class="text-secondary">📜 LỊCH SỬ ĐƠN HÀNG</summary>
-                <div id="list-history" style="max-height: 400px; overflow-y: auto;"></div>
-            </details>
-
-            <details open class="mt-3">
-                <summary class="text-warning">📊 TỔNG DOANH THU</summary>
-                <table class="table table-bordered table-sm text-center mt-2">
-                    <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
-                    <tbody id="revenue-table"></tbody>
-                </table>
-                <div class="d-flex justify-content-between align-items-center mt-2">
-                    <h5 class="text-success fw-bold mb-0">TỔNG: <span id="total-thu">0đ</span></h5>
-                </div>
-            </details>
+            <table class="table table-bordered table-sm text-center mt-2">
+                <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
+                <tbody id="revenue-table"></tbody>
+            </table>
+            <div class="d-flex justify-content-end align-items-center mt-2">
+                <h5 class="text-success fw-bold mb-0">TỔNG: <span id="total-thu">0đ</span></h5>
+            </div>
         </div>
     </div>
 
@@ -89,10 +82,13 @@
         const db = getFirestore(app);
         
         const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
+        const now = new Date();
         
-        // Mặc định chọn ngày hôm nay
-        document.getElementById('date-start').valueAsDate = new Date();
-        document.getElementById('date-end').valueAsDate = new Date();
+        // Mặc định chọn ngày hôm nay cho cả 2 khung
+        document.getElementById('h-start').valueAsDate = now;
+        document.getElementById('h-end').valueAsDate = now;
+        document.getElementById('r-start').valueAsDate = now;
+        document.getElementById('r-end').valueAsDate = now;
 
         // --- QUẢN LÝ THỰC ĐƠN ---
         window.themMon = async () => {
@@ -160,26 +156,22 @@
             alert("✅ Thanh toán thành công!");
         };
 
-        // --- TÌM KIẾM DỮ LIỆU THEO KHOẢNG THỜI GIAN ---
-        window.loadDataByRange = () => {
-            const startVal = document.getElementById('date-start').value;
-            const endVal = document.getElementById('date-end').value;
-            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày bắt đầu và kết thúc!");
+        // --- 1. TÌM KIẾM LỊCH SỬ ĐƠN HÀNG (ĐỘC LẬP) ---
+        window.loadHistory = () => {
+            const startVal = document.getElementById('h-start').value;
+            const endVal = document.getElementById('h-end').value;
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày!");
 
             const startDate = new Date(startVal);
             const endDate = new Date(endVal);
-            endDate.setHours(23, 59, 59, 999); // Set đến cuối ngày kết thúc
+            endDate.setHours(23, 59, 59, 999);
 
-            // 1. Load Lịch sử đơn đã thanh toán - cấu trúc BẢNG
-            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
+            
             onSnapshot(qHistory, snap => {
                 const listHistory = document.getElementById('list-history');
                 listHistory.innerHTML = "";
                 let hasData = false;
-                let totalInRange = 0;
-
-                // Tạm thời dùng object để nhóm doanh thu món theo khoảng ngày
-                let reportObj = { all_total: 0 };
 
                 snap.forEach(docOrder => {
                     const d = docOrder.data();
@@ -187,21 +179,12 @@
                     
                     if(orderDate >= startDate && orderDate <= endDate) {
                         hasData = true;
-                        totalInRange += d.tongTien;
                         
-                        // --- Xử lý cho phần Lịch sử ---
                         let itemsTable = `<table class="table table-sm table-bordered mt-1 small">
                             <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Giá</th></tr></thead><tbody>`;
                         
                         d.danhSachMon.forEach(m => {
                             itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`;
-                            
-                            // --- Xử lý cho phần Doanh thu tổng ---
-                            reportObj.all_total += (m.price * m.qty);
-                            if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
-                            if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
-                            reportObj[m.name+"_qty"] += m.qty;
-                            reportObj[m.name+"_amt"] += (m.price * m.qty);
                         });
                         
                         itemsTable += `</tbody></table>`;
@@ -219,14 +202,47 @@
                         `;
                     }
                 });
-
                 if(!hasData) listHistory.innerHTML = "<div class='text-muted text-center p-3'>Không có đơn hàng nào trong khoảng thời gian này.</div>";
+            });
+        };
 
-                // --- HIỂN THỊ DOANH THU TỔNG ---
+        // --- 2. TÌM KIẾM BÁO CÁO DOANH THU (ĐỘC LẬP) ---
+        window.loadReport = () => {
+            const startVal = document.getElementById('r-start').value;
+            const endVal = document.getElementById('r-end').value;
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày!");
+
+            const startDate = new Date(startVal);
+            const endDate = new Date(endVal);
+            endDate.setHours(23, 59, 59, 999);
+
+            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            
+            onSnapshot(qHistory, snap => {
                 const table = document.getElementById('revenue-table');
+                let reportObj = { all_total: 0 };
+                let hasData = false;
+
+                snap.forEach(docOrder => {
+                    const d = docOrder.data();
+                    const orderDate = d.thoiGian.toDate();
+                    
+                    if(orderDate >= startDate && orderDate <= endDate) {
+                        hasData = true;
+                        
+                        d.danhSachMon.forEach(m => {
+                            reportObj.all_total += (m.price * m.qty);
+                            if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
+                            if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
+                            reportObj[m.name+"_qty"] += m.qty;
+                            reportObj[m.name+"_amt"] += (m.price * m.qty);
+                        });
+                    }
+                });
+
                 if(!hasData) { table.innerHTML = "<tr><td colspan='3'>Không có dữ liệu</td></tr>"; document.getElementById('total-thu').innerText = "0đ"; return; }
                 
-                document.getElementById('total-thu').innerText = totalInRange.toLocaleString() + "đ";
+                document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
                 let html = "";
                 Object.keys(reportObj).forEach(k => {
                     if(k.endsWith("_qty")) {
@@ -238,7 +254,9 @@
             });
         };
         
-        loadDataByRange(); // Chạy lần đầu
+        // Chạy lần đầu để hiển thị dữ liệu hôm nay
+        loadHistory();
+        loadReport();
     </script>
 </body>
 </html>
