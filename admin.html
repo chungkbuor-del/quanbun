@@ -100,9 +100,9 @@
         });
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- QUẢN LÝ ĐƠN HÀNG (SỬA LẠI ĐỂ NHẬN "cho_lam") ---
-        // Lấy tất cả đơn hàng chưa thanh toán
-        const qOrders = query(collection(db, "orders"), where("trangThai", "!=", "da_thanh_toan"), orderBy("thoiGian", "desc"));
+        // --- QUẢN LÝ ĐƠN HÀNG (SỬA LẠI ĐỂ NHẬN TẤT CẢ) ---
+        // Không dùng filter nữa, lấy hết đơn hàng
+        const qOrders = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
         
         onSnapshot(qOrders, snap => {
             const listCho = document.getElementById('list-cho'); 
@@ -111,23 +111,35 @@
             
             snap.forEach(docOrder => {
                 const d = docOrder.data();
+                
+                // --- MỚI: DÒNG NÀY ĐỂ HỢP NHẤT TRẠNG THÁI ---
+                // Nếu đơn hàng đã thanh toán thì bỏ qua không hiện nữa
+                if (d.trangThai === "da_thanh_toan") return;
+                
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 
-                // Sử dụng 'cho_lam' từ file Order của bạn
-                const currentStatus = d.trangThai || 'cho_lam';
+                // Xác định trạng thái để phân cột
+                let currentStatus = d.trangThai;
+                // Nếu trangThai không khớp (ví dụ 'cho_lam', 'cho_xac_nhan'), coi như là chưa xong
+                if (currentStatus !== 'da_xong') currentStatus = 'chua_xong';
 
                 const html = `<div class="order-box">
                     <div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>
                     <div class="small my-1">${items}</div>
                     <div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>
-                    <button class="btn btn-sm w-100 mt-2 fw-bold ${currentStatus==='da_xong'?'btn-success':'btn-primary'}" 
-                    onclick="${currentStatus==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${currentStatus==='da_xong'?'THANH TOÁN':'XONG'}</button>
+                    <button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" 
+                    onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>
                 </div>`;
-                currentStatus === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
+                
+                if (d.trangThai === 'da_xong') {
+                    listXong.innerHTML += html;
+                } else {
+                    listCho.innerHTML += html;
+                }
             });
         });
 
-        // Cập nhật trạng thái thành 'da_xong' khi bấm XONG
+        // Khi bấm XONG, cập nhật thành 'da_xong'
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
         
         // --- THANH TOÁN (LƯU LỊCH SỬ) ---
