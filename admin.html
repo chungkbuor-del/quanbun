@@ -3,93 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Quán - Full Chi Tiết</title>
+    <title>Quản Lý Quán - Bản Chuẩn 2026</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f0f2f5; padding: 10px; font-family: sans-serif; }
-        .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .dish-name-display { white-space: pre-line; line-height: 1.2; display: block; }
-        #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
-        #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; overflow-y: auto; }
-        #admin-panel.show { display: block; }
-        .admin-menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-weight: bold; }
-        .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
+        body { background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .order-box { background: #fff; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #0d6efd; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .dish-detail { background: #f8f9fa; padding: 8px; border-radius: 5px; margin-top: 5px; font-size: 0.9rem; }
+        .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
-        .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
-        .category-header { background: #e9ecef; padding: 5px 15px; border-radius: 5px; margin-top: 15px; font-weight: bold; color: #495057; }
-        .history-item { border-bottom: 1px dashed #ccc; padding: 10px 0; }
+        .category-header { background: #343a40; color: white; padding: 5px 15px; border-radius: 5px; margin: 15px 0 10px; font-size: 0.9rem; }
+        #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 999; }
+        #admin-panel.show { display: block; }
+        .menu-item-btn { width: 100%; text-align: left; padding: 12px; border: none; background: none; border-bottom: 1px solid #eee; font-weight: 600; }
     </style>
 </head>
 <body>
 
-    <button id="btn-toggle-admin" class="btn btn-dark" onclick="toggleAdminPanel()">≡ Quản Lý</button>
+    <nav class="navbar navbar-dark bg-danger px-3 sticky-top">
+        <button class="btn btn-outline-light btn-sm" onclick="togglePanel()">≡ Menu Quản Lý</button>
+        <span class="navbar-brand mb-0 h1">Hệ Thống Quản Lý</span>
+    </nav>
 
     <div id="admin-panel">
-        <h5 class="text-center fw-bold text-danger">⚙️ MENU</h5>
-        <div class="admin-menu-item text-primary" onclick="openPage('page-menu')">➕ Thực đơn</div>
-        <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
-        <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
+        <button class="menu-item-btn text-primary" onclick="openPg('pg-menu')">📦 Quản Lý Thực Đơn</button>
+        <button class="menu-item-btn text-success" onclick="openPg('pg-history')">📜 Lịch Sử Đơn Chi Tiết</button>
+        <button class="menu-item-btn text-warning" onclick="openPg('pg-revenue')">💰 Báo Cáo Doanh Thu</button>
     </div>
 
-    <div id="page-menu" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-menu')">&times;</span>
-        <h3 class="text-primary text-center">➕ THỰC ĐƠN</h3>
-        <div class="row g-2 justify-content-center mt-3">
-            <div class="col-12 col-md-3">
-                <select id="m-category" class="form-select">
-                    <option value="BÚN">BÚN</option>
-                    <option value="BÒ NÉ">BÒ NÉ</option>
-                    <option value="NƯỚC">NƯỚC</option>
-                    <option value="TOPPING">TOPPING</option>
-                </select>
-            </div>
-            <div class="col-8 col-md-5"><textarea id="m-name" class="form-control" rows="2" placeholder="Tên món (Enter để xuống dòng)"></textarea></div>
-            <div class="col-4 col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá"></div>
-            <div class="col-12 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
-        </div>
-        <div id="menu-list-admin" class="mt-4 row justify-content-center"></div>
-    </div>
-
-    <div id="page-history" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-history')">&times;</span>
-        <h3 class="text-secondary text-center">📜 LỊCH SỬ ĐƠN HÀNG</h3>
-        <div class="admin-card text-center">
-            <div class="d-flex gap-2 justify-content-center">
-                <input type="date" id="h-start" class="form-control" style="max-width: 200px;">
-                <input type="date" id="h-end" class="form-control" style="max-width: 200px;">
-                <button class="btn btn-secondary" onclick="loadHistory()">TÌM</button>
-            </div>
-            <button class="btn btn-danger btn-sm mt-3" onclick="xoaToanBoLichSu()">🗑️ XÓA HẾT LỊCH SỬ</button>
-        </div>
-        <div id="list-history" class="mt-3"></div>
-    </div>
-
-    <div id="page-report" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-report')">&times;</span>
-        <h3 class="text-warning text-center">📊 DOANH THU</h3>
-        <div class="d-flex gap-2 justify-content-center mb-3">
-            <input type="date" id="r-start" class="form-control" style="max-width: 200px;">
-            <input type="date" id="r-end" class="form-control" style="max-width: 200px;">
-            <button class="btn btn-warning" onclick="loadReport()">TÌM</button>
-        </div>
-        <table class="table table-bordered bg-white text-center">
-            <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Tiền</th></tr></thead>
-            <tbody id="revenue-table"></tbody>
-        </table>
-        <h4 class="text-end text-success">TỔNG: <span id="total-thu">0đ</span></h4>
-    </div>
-
-    <div class="container-fluid mt-5">
+    <div class="container mt-4">
         <div class="row">
-            <div class="col-md-6"><div class="admin-card"><h5 class="text-danger fw-bold text-center">ĐANG CHỜ</h5><div id="list-cho"></div></div></div>
-            <div class="col-md-6"><div class="admin-card"><h5 class="text-success fw-bold text-center">ĐÃ XONG</h5><div id="list-xong"></div></div></div>
+            <div class="col-md-6">
+                <h5 class="fw-bold text-primary">⏳ ĐANG CHỜ CHẾ BIẾN</h5>
+                <div id="list-pending"></div>
+            </div>
+            <div class="col-md-6">
+                <h5 class="fw-bold text-success">✅ ĐÃ XONG - CHỜ THU TIỀN</h5>
+                <div id="list-ready"></div>
+            </div>
         </div>
+    </div>
+
+    <div id="pg-history" class="admin-page">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>📜 LỊCH SỬ CHI TIẾT</h3>
+            <button class="btn-close" onclick="closePg('pg-history')"></button>
+        </div>
+        <div class="admin-card border">
+            <div class="row g-2">
+                <div class="col-5"><input type="date" id="h-from" class="form-control"></div>
+                <div class="col-5"><input type="date" id="h-to" class="form-control"></div>
+                <div class="col-2"><button class="btn btn-dark w-100" onclick="getHistory()">TÌM</button></div>
+            </div>
+        </div>
+        <div id="history-content"></div>
+    </div>
+
+    <div id="pg-menu" class="admin-page">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>➕ QUẢN LÝ MÓN ĂN</h3>
+            <button class="btn-close" onclick="closePg('pg-menu')"></button>
+        </div>
+        <div class="admin-card border">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select id="m-cat" class="form-select">
+                        <option value="BÚN">BÚN</option>
+                        <option value="BÒ NÉ">BÒ NÉ</option>
+                        <option value="NƯỚC">NƯỚC</option>
+                        <option value="KHÁC">KHÁC</option>
+                    </select>
+                </div>
+                <div class="col-md-5"><textarea id="m-name" class="form-control" rows="1" placeholder="Tên món"></textarea></div>
+                <div class="col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá (đ)"></div>
+                <div class="col-md-2"><button class="btn btn-primary w-100" onclick="saveDish()">LƯU</button></div>
+            </div>
+        </div>
+        <div id="menu-display" class="row"></div>
+    </div>
+
+    <div id="pg-revenue" class="admin-page">
+        <div class="d-flex justify-content-between mb-4">
+            <h3>💰 BÁO CÁO DOANH THU</h3>
+            <button class="btn-close" onclick="closePg('pg-revenue')"></button>
+        </div>
+        <div class="admin-card border d-flex gap-2">
+            <input type="date" id="r-from" class="form-control">
+            <input type="date" id="r-to" class="form-control">
+            <button class="btn btn-warning" onclick="calcRevenue()">XEM</button>
+        </div>
+        <div id="rev-content"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -102,105 +110,86 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Gán ngày hôm nay vào các ô tìm kiếm
-        const today = new Date().toISOString().split('T')[0];
-        document.querySelectorAll('input[type="date"]').forEach(el => el.value = today);
+        // UI Helpers
+        window.togglePanel = () => document.getElementById('admin-panel').classList.toggle('show');
+        window.openPg = (id) => { document.getElementById(id).classList.add('show'); togglePanel(); };
+        window.closePg = (id) => document.getElementById(id).classList.remove('show');
 
-        window.toggleAdminPanel = () => document.getElementById('admin-panel').classList.toggle('show');
-        window.openPage = (p) => { document.getElementById(p).classList.add('show'); toggleAdminPanel(); };
-        window.closePage = (p) => document.getElementById(p).classList.remove('show');
-
-        // THÊM MÓN (Hỗ trợ 0đ)
-        window.themMon = async () => {
-            const cat = document.getElementById('m-category').value;
+        // 1. Quản lý thực đơn (Cho phép giá 0đ)
+        window.saveDish = async () => {
             const name = document.getElementById('m-name').value;
-            const priceVal = document.getElementById('m-price').value;
-            if(name.trim() !== "" && priceVal !== "") {
-                await addDoc(collection(db, "MENU"), { category: cat, name, price: parseInt(priceVal) });
+            const price = document.getElementById('m-price').value;
+            const cat = document.getElementById('m-cat').value;
+            if(name && price !== "") {
+                await addDoc(collection(db, "MENU"), { name, price: Number(price), category: cat });
                 document.getElementById('m-name').value = ""; document.getElementById('m-price').value = "";
-            } else { alert("Nhập đủ tên và giá!"); }
+            }
         };
 
-        // HIỂN THỊ MENU ADMIN
         onSnapshot(collection(db, "MENU"), snap => {
-            const list = document.getElementById('menu-list-admin');
-            list.innerHTML = "";
-            let grouped = {};
+            const div = document.getElementById('menu-display'); div.innerHTML = "";
+            let groups = {};
             snap.forEach(d => {
-                const data = d.data();
-                if(!grouped[data.category]) grouped[data.category] = [];
-                grouped[data.category].push({ id: d.id, ...data });
+                let m = d.data();
+                if(!groups[m.category]) groups[m.category] = [];
+                groups[m.category].push({id: d.id, ...m});
             });
-            for(let c in grouped) {
-                list.innerHTML += `<div class="col-12 category-header">${c}</div>`;
-                grouped[c].forEach(m => {
-                    list.innerHTML += `<div class="col-auto m-1"><div class="badge bg-white text-dark border p-2 shadow-sm"><span class="dish-name-display text-primary">${m.name}</span><span class="d-block border-top mt-1">${m.price.toLocaleString()}đ</span><b class="text-danger" style="cursor:pointer" onclick="xoaMon('${m.id}')">×</b></div></div>`;
+            for(let cat in groups) {
+                div.innerHTML += `<div class="col-12 category-header">${cat}</div>`;
+                groups[cat].forEach(m => {
+                    div.innerHTML += `<div class="col-md-3 mb-2"><div class="p-2 border rounded bg-white d-flex justify-content-between">
+                        <span>${m.name} <br><b>${m.price.toLocaleString()}đ</b></span>
+                        <button class="btn btn-sm text-danger" onclick="deleteDish('${m.id}')">Xóa</button>
+                    </div></div>`;
                 });
             }
         });
+        window.deleteDish = async (id) => { if(confirm("Xóa món?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        window.xoaMon = async (id) => { if(confirm("Xóa món?")) await deleteDoc(doc(db, "MENU", id)); };
-
-        // HIỂN THỊ ĐƠN HÀNG ĐANG CHỜ/XONG
+        // 2. Theo dõi đơn hàng thời gian thực
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
-            const lc = document.getElementById('list-cho'); const lx = document.getElementById('list-xong');
-            lc.innerHTML = ""; lx.innerHTML = "";
-            snap.forEach(docOrder => {
-                const d = docOrder.data();
-                if (d.trangThai === "da_thanh_toan") return;
-                const items = d.danhSachMon.map(i => `<div class="mb-1">• <b>${i.name}</b> x${i.qty}</div>`).join('');
-                const h = `<div class="order-box"><b>👤 ${d.khach}</b><div class="small my-2">${items}</div><div class="fw-bold text-end border-top">${d.tongTien.toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong'?`pay('${docOrder.id}')`:`done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button></div>`;
-                d.trangThai === 'da_xong' ? lx.innerHTML += h : lc.innerHTML += h;
+            const pDiv = document.getElementById('list-pending'); const rDiv = document.getElementById('list-ready');
+            pDiv.innerHTML = ""; rDiv.innerHTML = "";
+            snap.forEach(d => {
+                let o = d.data(); if(o.trangThai === "paid") return;
+                let itemsStr = o.danhSachMon.map(i => `• ${i.name} x${i.qty}`).join('<br>');
+                let html = `<div class="order-box">
+                    <div class="d-flex justify-content-between"><b>👤 ${o.khach}</b> <small>${o.thoiGian.toDate().toLocaleTimeString('vi-VN')}</small></div>
+                    <div class="dish-detail">${itemsStr}</div>
+                    <div class="mt-2 text-end"><b>Tổng: ${o.tongTien.toLocaleString()}đ</b></div>
+                    <button class="btn w-100 mt-2 btn-sm ${o.trangThai==='ready'?'btn-success':'btn-primary'}" 
+                    onclick="changeStatus('${d.id}', '${o.trangThai}')">${o.trangThai==='ready'?'THU TIỀN (Xong đơn)':'LÀM XONG'}</button>
+                </div>`;
+                o.trangThai === 'ready' ? rDiv.innerHTML += html : pDiv.innerHTML += html;
             });
         });
 
-        window.done = async (id) => updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
-        window.pay = async (id) => { if(confirm("Xác nhận đã thu tiền?")) await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan" }); };
+        window.changeStatus = async (id, current) => {
+            let next = current === 'pending' ? 'ready' : 'paid';
+            await updateDoc(doc(db, "orders", id), { trangThai: next });
+        };
 
-        // TÌM LỊCH SỬ (Hiện chi tiết món & Tên người đặt)
-        window.loadHistory = async () => {
-            const s = new Date(document.getElementById('h-start').value); s.setHours(0,0,0,0);
-            const e = new Date(document.getElementById('h-end').value); e.setHours(23,59,59,999);
-            const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc")));
-            const list = document.getElementById('list-history');
-            list.innerHTML = "";
-            snap.forEach(docOrder => {
-                const d = docOrder.data();
-                const time = d.thoiGian.toDate();
-                if(time >= s && time <= e) {
-                    const items = d.danhSachMon.map(i => `• ${i.name} (x${i.qty})`).join('<br>');
-                    list.innerHTML += `
-                    <div class="order-box" style="border-left-color: gray;">
-                        <div class="d-flex justify-content-between"><b>👤 ${d.khach}</b> <small>${time.toLocaleString('vi-VN')}</small></div>
-                        <div class="small my-2 text-muted" style="white-space: pre-line;">${items}</div>
-                        <div class="text-end fw-bold">Tổng: ${d.tongTien.toLocaleString()}đ</div>
+        // 3. Lịch sử chi tiết (Tên khách + Chi tiết món + Tổng tiền)
+        window.getHistory = async () => {
+            const from = new Date(document.getElementById('h-from').value); from.setHours(0,0,0,0);
+            const to = new Date(document.getElementById('h-to').value); to.setHours(23,59,59,999);
+            const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "paid"), orderBy("thoiGian", "desc")));
+            const div = document.getElementById('history-content'); div.innerHTML = "";
+            let count = 0;
+            snap.forEach(d => {
+                let o = d.data(); let time = o.thoiGian.toDate();
+                if(time >= from && time <= to) {
+                    count++;
+                    let items = o.danhSachMon.map(i => `<div class="d-flex justify-content-between"><span>- ${i.name}</span> <span>x${i.qty}</span></div>`).join('');
+                    div.innerHTML += `<div class="admin-card border-start border-5 border-secondary">
+                        <div class="d-flex justify-content-between fw-bold"><span>👤 Khách: ${o.khach}</span> <span class="text-muted">${time.toLocaleString('vi-VN')}</span></div>
+                        <div class="my-2 p-2 bg-light rounded">${items}</div>
+                        <div class="text-end text-danger fw-bold">Tổng thu: ${o.tongTien.toLocaleString()}đ</div>
                     </div>`;
                 }
             });
-            if(list.innerHTML === "") list.innerHTML = "<p class='text-center'>Không có đơn trong ngày này.</p>";
+            if(count === 0) div.innerHTML = "<div class='text-center p-5'>Không có dữ liệu đơn hàng đã thanh toán.</div>";
         };
-
-        window.loadReport = async () => {
-            const s = new Date(document.getElementById('r-start').value); s.setHours(0,0,0,0);
-            const e = new Date(document.getElementById('r-end').value); e.setHours(23,59,59,999);
-            const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan")));
-            let rep = {}; let total = 0;
-            snap.forEach(docOrder => {
-                const d = docOrder.data();
-                if(d.thoiGian.toDate() >= s && d.thoiGian.toDate() <= e) {
-                    d.danhSachMon.forEach(m => {
-                        if(!rep[m.name]) rep[m.name] = { q: 0, a: 0 };
-                        rep[m.name].q += m.qty; rep[m.name].a += (m.qty * m.price);
-                        total += (m.qty * m.price);
-                    });
-                }
-            });
-            const tb = document.getElementById('revenue-table'); tb.innerHTML = "";
-            for (let k in rep) tb.innerHTML += `<tr><td class="text-start">${k}</td><td>${rep[k].q}</td><td>${rep[k].a.toLocaleString()}đ</td></tr>`;
-            document.getElementById('total-thu').innerText = total.toLocaleString() + "đ";
-        };
-
-        window.xoaToanBoLichSu = async () => { if(confirm("Xóa vĩnh viễn?")) { const s = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"))); s.forEach(d => deleteDoc(d.ref)); alert("Đã xóa!"); } };
     </script>
 </body>
 </html>
