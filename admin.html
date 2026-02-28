@@ -100,8 +100,8 @@
         });
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- QUẢN LÝ ĐƠN HÀNG (SỬA LẠI QUERY CHO KHỚP VỚI "cho_lam") ---
-        // SỬA: Lọc các đơn chưa thanh toán (bao gồm "cho_lam" và "da_xong")
+        // --- QUẢN LÝ ĐƠN HÀNG (SỬA LẠI ĐỂ NHẬN "cho_lam") ---
+        // Lấy tất cả đơn hàng chưa thanh toán
         const qOrders = query(collection(db, "orders"), where("trangThai", "!=", "da_thanh_toan"), orderBy("thoiGian", "desc"));
         
         onSnapshot(qOrders, snap => {
@@ -113,7 +113,7 @@
                 const d = docOrder.data();
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 
-                // Sử dụng 'cho_lam' thay vì 'cho_xac_nhan' để khớp với Order
+                // Sử dụng 'cho_lam' từ file Order của bạn
                 const currentStatus = d.trangThai || 'cho_lam';
 
                 const html = `<div class="order-box">
@@ -127,7 +127,7 @@
             });
         });
 
-        // Khi bấm XONG, cập nhật thành 'da_xong'
+        // Cập nhật trạng thái thành 'da_xong' khi bấm XONG
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
         
         // --- THANH TOÁN (LƯU LỊCH SỬ) ---
@@ -147,11 +147,11 @@
             });
             await setDoc(reportRef, up, { merge: true });
 
-            // 2. Chuyển trạng thái sang "da_thanh_toan" để lưu lịch sử (không xóa đơn)
+            // 2. Chuyển trạng thái sang "da_thanh_toan" để lưu lịch sử
             await updateDoc(orderRef, { trangThai: "da_thanh_toan" });
         };
 
-        // --- LỊCH SỬ ĐƠN HÀNG (HIỂN THỊ ĐƠN ĐÃ THANH TOÁN) ---
+        // --- LỊCH SỬ ĐƠN HÀNG ---
         const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
         onSnapshot(qHistory, snap => {
             const listHistory = document.getElementById('list-history');
