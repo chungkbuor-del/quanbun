@@ -3,98 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Quán - Bản Chuẩn 2026</title>
+    <title>Quản Lý Quán - Bản Chuẩn Nhất</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .order-box { background: #fff; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #0d6efd; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .dish-detail { background: #f8f9fa; padding: 8px; border-radius: 5px; margin-top: 5px; font-size: 0.9rem; }
+        body { background: #f4f6f9; font-family: sans-serif; padding: 10px; }
+        .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .order-box { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #0d6efd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .dish-detail-line { background: #f8f9fa; padding: 5px 10px; border-radius: 4px; margin-bottom: 3px; font-size: 0.9rem; border-bottom: 1px solid #eee; }
         .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
-        .category-header { background: #343a40; color: white; padding: 5px 15px; border-radius: 5px; margin: 15px 0 10px; font-size: 0.9rem; }
-        #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 999; }
-        #admin-panel.show { display: block; }
-        .menu-item-btn { width: 100%; text-align: left; padding: 12px; border: none; background: none; border-bottom: 1px solid #eee; font-weight: 600; }
+        .category-header { background: #e9ecef; padding: 8px 15px; border-radius: 5px; margin: 15px 0 10px; font-weight: bold; color: #333; }
+        .history-box { border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #fff; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark bg-danger px-3 sticky-top">
-        <button class="btn btn-outline-light btn-sm" onclick="togglePanel()">≡ Menu Quản Lý</button>
-        <span class="navbar-brand mb-0 h1">Hệ Thống Quản Lý</span>
-    </nav>
-
-    <div id="admin-panel">
-        <button class="menu-item-btn text-primary" onclick="openPg('pg-menu')">📦 Quản Lý Thực Đơn</button>
-        <button class="menu-item-btn text-success" onclick="openPg('pg-history')">📜 Lịch Sử Đơn Chi Tiết</button>
-        <button class="menu-item-btn text-warning" onclick="openPg('pg-revenue')">💰 Báo Cáo Doanh Thu</button>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-danger m-0">🔔 ĐIỀU HÀNH QUÁN</h4>
+        <div class="dropdown">
+            <button class="btn btn-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">MENU QUẢN LÝ</button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="openPg('pg-menu')">📦 Thực đơn</a></li>
+                <li><a class="dropdown-item" href="#" onclick="openPg('pg-history')">📜 Lịch sử chi tiết</a></li>
+                <li><a class="dropdown-item" href="#" onclick="openPg('pg-revenue')">💰 Doanh thu</a></li>
+            </ul>
+        </div>
     </div>
 
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-6">
-                <h5 class="fw-bold text-primary">⏳ ĐANG CHỜ CHẾ BIẾN</h5>
-                <div id="list-pending"></div>
-            </div>
-            <div class="col-md-6">
-                <h5 class="fw-bold text-success">✅ ĐÃ XONG - CHỜ THU TIỀN</h5>
-                <div id="list-ready"></div>
-            </div>
+    <div class="row">
+        <div class="col-md-6 border-end">
+            <h5 class="text-primary fw-bold text-center">⏳ CHỜ CHẾ BIẾN</h5>
+            <div id="list-pending"></div>
+        </div>
+        <div class="col-md-6">
+            <h5 class="text-success fw-bold text-center">✅ CHỜ THU TIỀN</h5>
+            <div id="list-ready"></div>
         </div>
     </div>
 
     <div id="pg-history" class="admin-page">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>📜 LỊCH SỬ CHI TIẾT</h3>
+            <h3 class="m-0">📜 LỊCH SỬ ĐƠN HÀNG</h3>
             <button class="btn-close" onclick="closePg('pg-history')"></button>
         </div>
-        <div class="admin-card border">
-            <div class="row g-2">
-                <div class="col-5"><input type="date" id="h-from" class="form-control"></div>
-                <div class="col-5"><input type="date" id="h-to" class="form-control"></div>
-                <div class="col-2"><button class="btn btn-dark w-100" onclick="getHistory()">TÌM</button></div>
+        <div class="admin-card border text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <input type="date" id="h-from" class="form-control" style="max-width: 180px;">
+                <input type="date" id="h-to" class="form-control" style="max-width: 180px;">
+                <button class="btn btn-primary" onclick="loadHistoryDetail()">TÌM KIẾM</button>
             </div>
         </div>
-        <div id="history-content"></div>
+        <div id="history-results"></div>
     </div>
 
     <div id="pg-menu" class="admin-page">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>➕ QUẢN LÝ MÓN ĂN</h3>
+        <div class="d-flex justify-content-between mb-3">
+            <h3>📦 QUẢN LÝ MÓN</h3>
             <button class="btn-close" onclick="closePg('pg-menu')"></button>
         </div>
         <div class="admin-card border">
             <div class="row g-2">
                 <div class="col-md-3">
                     <select id="m-cat" class="form-select">
-                        <option value="BÚN">BÚN</option>
-                        <option value="BÒ NÉ">BÒ NÉ</option>
-                        <option value="NƯỚC">NƯỚC</option>
-                        <option value="KHÁC">KHÁC</option>
+                        <option value="BÚN">BÚN</option><option value="BÒ NÉ">BÒ NÉ</option>
+                        <option value="NƯỚC">NƯỚC</option><option value="KHÁC">KHÁC</option>
                     </select>
                 </div>
-                <div class="col-md-5"><textarea id="m-name" class="form-control" rows="1" placeholder="Tên món"></textarea></div>
-                <div class="col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá (đ)"></div>
-                <div class="col-md-2"><button class="btn btn-primary w-100" onclick="saveDish()">LƯU</button></div>
+                <div class="col-md-5"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
+                <div class="col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá (ví dụ: 0)"></div>
+                <div class="col-md-2"><button class="btn btn-danger w-100" onclick="saveDish()">LƯU MÓN</button></div>
             </div>
         </div>
-        <div id="menu-display" class="row"></div>
+        <div id="menu-list-admin" class="row"></div>
     </div>
 
     <div id="pg-revenue" class="admin-page">
-        <div class="d-flex justify-content-between mb-4">
-            <h3>💰 BÁO CÁO DOANH THU</h3>
-            <button class="btn-close" onclick="closePg('pg-revenue')"></button>
-        </div>
-        <div class="admin-card border d-flex gap-2">
-            <input type="date" id="r-from" class="form-control">
-            <input type="date" id="r-to" class="form-control">
-            <button class="btn btn-warning" onclick="calcRevenue()">XEM</button>
-        </div>
+        <div class="d-flex justify-content-between mb-3"><h3>💰 DOANH THU</h3><button class="btn-close" onclick="closePg('pg-revenue')"></button></div>
         <div id="rev-content"></div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -110,85 +98,85 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // UI Helpers
-        window.togglePanel = () => document.getElementById('admin-panel').classList.toggle('show');
-        window.openPg = (id) => { document.getElementById(id).classList.add('show'); togglePanel(); };
+        window.openPg = (id) => document.getElementById(id).classList.add('show');
         window.closePg = (id) => document.getElementById(id).classList.remove('show');
 
-        // 1. Quản lý thực đơn (Cho phép giá 0đ)
+        // Thêm món - Sửa lỗi giá 0đ
         window.saveDish = async () => {
-            const name = document.getElementById('m-name').value;
-            const price = document.getElementById('m-price').value;
-            const cat = document.getElementById('m-cat').value;
-            if(name && price !== "") {
-                await addDoc(collection(db, "MENU"), { name, price: Number(price), category: cat });
+            const name = document.getElementById('m-name').value.trim();
+            const priceStr = document.getElementById('m-price').value;
+            const category = document.getElementById('m-cat').value;
+            if(name !== "" && priceStr !== "") {
+                await addDoc(collection(db, "MENU"), { name, price: Number(priceStr), category });
                 document.getElementById('m-name').value = ""; document.getElementById('m-price').value = "";
             }
         };
 
+        // Danh sách thực đơn Admin
         onSnapshot(collection(db, "MENU"), snap => {
-            const div = document.getElementById('menu-display'); div.innerHTML = "";
+            const list = document.getElementById('menu-list-admin'); list.innerHTML = "";
             let groups = {};
             snap.forEach(d => {
                 let m = d.data();
                 if(!groups[m.category]) groups[m.category] = [];
                 groups[m.category].push({id: d.id, ...m});
             });
-            for(let cat in groups) {
-                div.innerHTML += `<div class="col-12 category-header">${cat}</div>`;
-                groups[cat].forEach(m => {
-                    div.innerHTML += `<div class="col-md-3 mb-2"><div class="p-2 border rounded bg-white d-flex justify-content-between">
-                        <span>${m.name} <br><b>${m.price.toLocaleString()}đ</b></span>
-                        <button class="btn btn-sm text-danger" onclick="deleteDish('${m.id}')">Xóa</button>
+            for(let c in groups) {
+                list.innerHTML += `<div class="col-12 category-header">${c}</div>`;
+                groups[c].forEach(m => {
+                    list.innerHTML += `<div class="col-md-3 mb-2"><div class="p-2 bg-white border rounded d-flex justify-content-between">
+                        <span>${m.name} - <b>${m.price.toLocaleString()}đ</b></span>
+                        <button class="btn btn-sm text-danger" onclick="delDish('${m.id}')">Xóa</button>
                     </div></div>`;
                 });
             }
         });
-        window.deleteDish = async (id) => { if(confirm("Xóa món?")) await deleteDoc(doc(db, "MENU", id)); };
+        window.delDish = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // 2. Theo dõi đơn hàng thời gian thực
+        // Theo dõi đơn hàng thời gian thực
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const pDiv = document.getElementById('list-pending'); const rDiv = document.getElementById('list-ready');
             pDiv.innerHTML = ""; rDiv.innerHTML = "";
             snap.forEach(d => {
-                let o = d.data(); if(o.trangThai === "paid") return;
-                let itemsStr = o.danhSachMon.map(i => `• ${i.name} x${i.qty}`).join('<br>');
+                let o = d.data(); if(o.trangThai === "da_thu_tien") return;
+                let itemsHtml = o.danhSachMon.map(i => `<div class="dish-detail-line"><b>${i.name}</b> x${i.qty}</div>`).join('');
                 let html = `<div class="order-box">
-                    <div class="d-flex justify-content-between"><b>👤 ${o.khach}</b> <small>${o.thoiGian.toDate().toLocaleTimeString('vi-VN')}</small></div>
-                    <div class="dish-detail">${itemsStr}</div>
-                    <div class="mt-2 text-end"><b>Tổng: ${o.tongTien.toLocaleString()}đ</b></div>
-                    <button class="btn w-100 mt-2 btn-sm ${o.trangThai==='ready'?'btn-success':'btn-primary'}" 
-                    onclick="changeStatus('${d.id}', '${o.trangThai}')">${o.trangThai==='ready'?'THU TIỀN (Xong đơn)':'LÀM XONG'}</button>
+                    <div class="d-flex justify-content-between mb-2"><b>👤 ${o.khach}</b> <small>${o.thoiGian.toDate().toLocaleTimeString('vi-VN')}</small></div>
+                    ${itemsHtml}
+                    <div class="text-end fw-bold mt-2 border-top pt-2">Tổng: ${o.tongTien.toLocaleString()}đ</div>
+                    <button class="btn w-100 mt-2 ${o.trangThai==='xong'?'btn-success':'btn-primary'}" onclick="updateStt('${d.id}', '${o.trangThai}')">
+                        ${o.trangThai==='xong'?'THU TIỀN & LƯU LỊCH SỬ':'LÀM XONG'}
+                    </button>
                 </div>`;
-                o.trangThai === 'ready' ? rDiv.innerHTML += html : pDiv.innerHTML += html;
+                o.trangThai === 'xong' ? rDiv.innerHTML += html : pDiv.innerHTML += html;
             });
         });
 
-        window.changeStatus = async (id, current) => {
-            let next = current === 'pending' ? 'ready' : 'paid';
+        window.updateStt = async (id, cur) => {
+            let next = cur === 'cho' ? 'xong' : 'da_thu_tien';
             await updateDoc(doc(db, "orders", id), { trangThai: next });
         };
 
-        // 3. Lịch sử chi tiết (Tên khách + Chi tiết món + Tổng tiền)
-        window.getHistory = async () => {
+        // LỊCH SỬ CHI TIẾT - HIỆN Tên Khách + Món đã ăn
+        window.loadHistoryDetail = async () => {
             const from = new Date(document.getElementById('h-from').value); from.setHours(0,0,0,0);
             const to = new Date(document.getElementById('h-to').value); to.setHours(23,59,59,999);
-            const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "paid"), orderBy("thoiGian", "desc")));
-            const div = document.getElementById('history-content'); div.innerHTML = "";
+            const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "da_thu_tien"), orderBy("thoiGian", "desc")));
+            const div = document.getElementById('history-results'); div.innerHTML = "";
             let count = 0;
             snap.forEach(d => {
                 let o = d.data(); let time = o.thoiGian.toDate();
                 if(time >= from && time <= to) {
                     count++;
-                    let items = o.danhSachMon.map(i => `<div class="d-flex justify-content-between"><span>- ${i.name}</span> <span>x${i.qty}</span></div>`).join('');
-                    div.innerHTML += `<div class="admin-card border-start border-5 border-secondary">
-                        <div class="d-flex justify-content-between fw-bold"><span>👤 Khách: ${o.khach}</span> <span class="text-muted">${time.toLocaleString('vi-VN')}</span></div>
-                        <div class="my-2 p-2 bg-light rounded">${items}</div>
-                        <div class="text-end text-danger fw-bold">Tổng thu: ${o.tongTien.toLocaleString()}đ</div>
+                    let itemsHtml = o.danhSachMon.map(i => `<div class="small text-muted">- ${i.name} (Số lượng: ${i.qty})</div>`).join('');
+                    div.innerHTML += `<div class="history-box">
+                        <div class="d-flex justify-content-between"><b>👤 Khách: ${o.khach}</b> <span>${time.toLocaleString('vi-VN')}</span></div>
+                        <div class="bg-light p-2 my-2 rounded">${itemsHtml}</div>
+                        <div class="text-end fw-bold text-danger">Thành tiền: ${o.tongTien.toLocaleString()}đ</div>
                     </div>`;
                 }
             });
-            if(count === 0) div.innerHTML = "<div class='text-center p-5'>Không có dữ liệu đơn hàng đã thanh toán.</div>";
+            if(count === 0) div.innerHTML = "<p class='text-center mt-5'>Không tìm thấy đơn hàng nào trong ngày này.</p>";
         };
     </script>
 </body>
