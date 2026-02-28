@@ -3,18 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đặt Món - Quán </title>
+    <title>Đặt Món - Quán</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-bottom: 160px; }
+        body { background: #f8f9fa; padding-bottom: 160px; font-family: sans-serif; }
         .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
         .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
         .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        
+        /* Style mới cho tiêu đề nhóm */
+        .category-title { 
+            background: #dc3545; 
+            color: white; 
+            padding: 5px 15px; 
+            border-radius: 20px; 
+            display: inline-block; 
+            margin-top: 20px; 
+            margin-bottom: 10px; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .dish-name { white-space: pre-line; line-height: 1.2; display: block; }
     </style>
 </head>
 <body>
     <div class="container py-3">
-        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN </h3>
+        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN</h3>
         
         <div class="card p-3 mb-4 border-0 shadow-sm">
             <label class="fw-bold mb-1 small text-muted text-uppercase">Tên của bạn:</label>
@@ -51,16 +66,43 @@
 
         let cart = {};
 
+        // LẮNG NGHE MENU VÀ PHÂN NHÓM
         onSnapshot(collection(db, "MENU"), (snap) => {
             const menuDiv = document.getElementById('display-menu');
             menuDiv.innerHTML = "";
+            
+            let grouped = {};
+
+            // Bước 1: Gom nhóm món ăn theo thuộc tính 'category'
             snap.forEach(d => {
                 const item = d.data();
-                menuDiv.innerHTML += `
-                    <div class="menu-item d-flex justify-content-between align-items-center">
-                        <div><div class="fw-bold fs-5">${item.name}</div><div class="text-danger fw-bold">${item.price.toLocaleString()}đ</div></div>
-                        <button class="btn btn-danger btn-sm rounded-pill px-4 shadow-sm" onclick="updateCart('${item.name}', ${item.price}, 1)">+ Thêm</button>
-                    </div>`;
+                const cat = item.category || "KHÁC"; // Nếu không có nhóm thì cho vào mục KHÁC
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(item);
+            });
+
+            // Bước 2: Hiển thị ra màn hình
+            // Sắp xếp các nhóm (ví dụ Bún hiện trước, Nước hiện sau)
+            const categories = Object.keys(grouped).sort(); 
+
+            categories.forEach(cat => {
+                // In tiêu đề nhóm
+                menuDiv.innerHTML += `<div class="category-title">${cat}</div>`;
+                
+                // In các món trong nhóm đó
+                grouped[cat].forEach(item => {
+                    menuDiv.innerHTML += `
+                        <div class="menu-item d-flex justify-content-between align-items-center">
+                            <div style="flex: 1; padding-right: 10px;">
+                                <div class="fw-bold fs-6 dish-name">${item.name}</div>
+                                <div class="text-danger fw-bold small">${item.price.toLocaleString()}đ</div>
+                            </div>
+                            <button class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm" 
+                                    onclick="updateCart('${item.name.replace(/\n/g, " ")}', ${item.price}, 1)">
+                                + Thêm
+                            </button>
+                        </div>`;
+                });
             });
         });
 
@@ -79,10 +121,10 @@
                 total += item.price * item.qty;
                 list.innerHTML += `
                     <div class="d-flex justify-content-between align-items-center mb-2 bg-light p-2 rounded border">
-                        <span class="fw-bold">${item.name}</span>
+                        <span class="fw-bold small" style="white-space: pre-line;">${item.name}</span>
                         <div class="d-flex align-items-center">
                             <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, -1)">-</button>
-                            <b class="mx-3 fs-5">${item.qty}</b>
+                            <b class="mx-3 fs-6">${item.qty}</b>
                             <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, 1)">+</button>
                         </div>
                     </div>`;
@@ -104,7 +146,7 @@
                     trangThai: "cho_lam",
                     thoiGian: new Date()
                 });
-                alert("Đã gửi đơn! Chờ quán làm món nhé.");
+                alert("Đã gửi đơn thành công!");
                 cart = {}; renderUI();
                 document.getElementById('ten-khach').value = "";
             } catch(e) { alert("Lỗi gửi đơn!"); }
@@ -112,5 +154,3 @@
     </script>
 </body>
 </html>
-
-
