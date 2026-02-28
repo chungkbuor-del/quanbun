@@ -3,29 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Quán</title>
+    <title>Quản lý Quán Ăn - Phân Nhóm</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #f0f2f5; padding: 10px; font-family: sans-serif; }
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
-        
-        #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; transition: all 0.3s; overflow-y: auto; }
+        #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; overflow-y: auto; }
         #admin-panel.show { display: block; }
-        .admin-menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-weight: bold; transition: 0.2s; }
+        .admin-menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-weight: bold; }
         .admin-menu-item:hover { background-color: #f8f9fa; color: #0d6efd; }
-
         .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
-        
-        .order-input { margin-bottom: 5px; }
-        .modal-item-row { border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .category-header { background: #e9ecef; padding: 5px 15px; border-radius: 5px; margin-top: 15px; font-weight: bold; color: #495057; }
     </style>
 </head>
 <body>
-    
+
     <h3 class="text-center fw-bold text-danger mb-4">🔔 QUẢN LÝ QUÁN</h3>
 
     <button id="btn-toggle-admin" class="btn btn-dark" onclick="toggleAdminPanel()">≡ Quản Lý</button>
@@ -41,7 +37,15 @@
         <span class="close-page-btn" onclick="closePage('page-menu')">&times;</span>
         <h3 class="text-primary text-center">➕ QUẢN LÝ THỰC ĐƠN</h3>
         <div class="row g-2 justify-content-center mt-3">
-            <div class="col-6 col-md-4"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
+            <div class="col-6 col-md-3">
+                <select id="m-category" class="form-select">
+                    <option value="BÚN">BÚN</option>
+                    <option value="BÒ NÉ">BÒ NÉ</option>
+                    <option value="NƯỚC">NƯỚC</option>
+                    <option value="KHÁC">KHÁC</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
             <div class="col-4 col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá"></div>
             <div class="col-2 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
         </div>
@@ -51,44 +55,38 @@
     <div id="page-history" class="admin-page">
         <span class="close-page-btn" onclick="closePage('page-history')">&times;</span>
         <h3 class="text-secondary text-center">📜 LỊCH SỬ ĐƠN HÀNG</h3>
-        
         <div class="admin-card">
             <div class="row g-2 justify-content-center">
-                <div class="col-4 col-md-3"><input type="date" id="h-start" class="form-control"></div>
-                <div class="col-4 col-md-3"><input type="date" id="h-end" class="form-control"></div>
-                <div class="col-2 col-md-1"><button class="btn btn-secondary w-100" onclick="loadHistory()">TÌM</button></div>
+                <div class="col-4"><input type="date" id="h-start" class="form-control"></div>
+                <div class="col-4"><input type="date" id="h-end" class="form-control"></div>
+                <div class="col-2"><button class="btn btn-secondary w-100" onclick="loadHistory()">TÌM</button></div>
             </div>
             <button class="btn btn-danger w-100 mt-3 fw-bold" onclick="xoaToanBoLichSu()">🗑️ XÓA TOÀN BỘ LỊCH SỬ</button>
         </div>
-        
-        <div id="list-history" class="mt-4" style="max-height: 60vh; overflow-y: auto;"></div>
+        <div id="list-history" class="mt-4"></div>
     </div>
 
     <div id="page-report" class="admin-page">
         <span class="close-page-btn" onclick="closePage('page-report')">&times;</span>
         <h3 class="text-warning text-center">📊 BÁO CÁO DOANH THU</h3>
         <div class="row g-2 justify-content-center mt-3">
-            <div class="col-4 col-md-3"><input type="date" id="r-start" class="form-control"></div>
-            <div class="col-4 col-md-3"><input type="date" id="r-end" class="form-control"></div>
-            <div class="col-2 col-md-1"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button></div>
+            <div class="col-4"><input type="date" id="r-start" class="form-control"></div>
+            <div class="col-4"><input type="date" id="r-end" class="form-control"></div>
+            <div class="col-2"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button></div>
         </div>
-        <div class="row justify-content-center mt-3">
-            <div class="col-12 col-md-8">
-                <table class="table table-bordered table-sm text-center">
-                    <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
-                    <tbody id="revenue-table"></tbody>
-                </table>
-                <div class="text-end fw-bold fs-4 text-success">TỔNG: <span id="total-thu">0đ</span></div>
-            </div>
+        <div class="mt-3">
+            <table class="table table-bordered text-center">
+                <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Tiền</th></tr></thead>
+                <tbody id="revenue-table"></tbody>
+            </table>
+            <div class="text-end fw-bold fs-4 text-success">TỔNG: <span id="total-thu">0đ</span></div>
         </div>
     </div>
 
     <div class="container-fluid">
         <div class="admin-card">
             <h5 class="text-center fw-bold text-primary">📝 TẠO ĐƠN MỚI</h5>
-            <div class="row g-2 mb-2">
-                <div class="col-12"><input type="text" id="order-customer" class="form-control" placeholder="Tên khách hàng"></div>
-            </div>
+            <div class="mb-2"><input type="text" id="order-customer" class="form-control" placeholder="Tên khách hàng"></div>
             <div id="order-items-input"></div>
             <button class="btn btn-outline-primary btn-sm mb-2" onclick="addOrderItemInput()">+ Thêm món</button>
             <button class="btn btn-success w-100 fw-bold" onclick="datMon()">ĐẶT MÓN</button>
@@ -98,30 +96,6 @@
         <div class="row">
             <div class="col-md-6"><div class="admin-card"><h5 class="text-danger fw-bold text-center">ĐANG CHỜ</h5><div id="list-cho"></div></div></div>
             <div class="col-md-6"><div class="admin-card"><h5 class="text-success fw-bold text-center">ĐÃ XONG</h5><div id="list-xong"></div></div></div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="editOrderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Sửa đơn: <span id="modal-customer-name"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="modal-order-content">
-                    <div class="row fw-bold text-center">
-                        <div class="col-6">Tên món</div>
-                        <div class="col-3">SL</div>
-                        <div class="col-3">Xóa</div>
-                    </div>
-                    <div id="modal-items-list"></div>
-                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="addModalItemInput()">+ Thêm món vào đơn</button>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-primary" onclick="saveOrderEdit()">Lưu thay đổi</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -142,198 +116,102 @@
         
         let menuItems = [];
         const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
-        const now = new Date();
-        document.getElementById('h-start').valueAsDate = now;
-        document.getElementById('h-end').valueAsDate = now;
-        document.getElementById('r-start').valueAsDate = now;
-        document.getElementById('r-end').valueAsDate = now;
 
-        window.toggleAdminPanel = () => { document.getElementById('admin-panel').classList.toggle('show'); };
-        window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); document.getElementById('admin-panel').classList.remove('show'); };
-        window.closePage = (pageId) => { document.getElementById(pageId).classList.remove('show'); };
+        // Điều hướng
+        window.toggleAdminPanel = () => document.getElementById('admin-panel').classList.toggle('show');
+        window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); toggleAdminPanel(); };
+        window.closePage = (pageId) => document.getElementById(pageId).classList.remove('show');
 
-        // --- Logic Thực đơn ---
+        // --- QUẢN LÝ THỰC ĐƠN (PHÂN NHÓM) ---
         window.themMon = async () => {
+            const category = document.getElementById('m-category').value;
             const name = document.getElementById('m-name').value;
             const price = parseInt(document.getElementById('m-price').value);
-            if(name && price) { await addDoc(collection(db, "MENU"), { name, price }); document.getElementById('m-name').value = ""; document.getElementById('m-price').value = ""; }
+            if(name && price) {
+                await addDoc(collection(db, "MENU"), { category, name, price });
+                document.getElementById('m-name').value = ""; document.getElementById('m-price').value = "";
+            }
         };
 
         onSnapshot(collection(db, "MENU"), snap => {
-            const list = document.getElementById('menu-list-admin'); list.innerHTML = ""; menuItems = [];
-            snap.forEach(d => { menuItems.push({id: d.id, ...d.data()}); list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${d.data().name} (${(d.data().price/1000).toFixed(1)}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span></div>`; });
-            addOrderItemInput();
+            const list = document.getElementById('menu-list-admin');
+            list.innerHTML = ""; menuItems = [];
+            let grouped = {};
+
+            snap.forEach(d => {
+                const data = { id: d.id, ...d.data() };
+                menuItems.push(data);
+                if (!grouped[data.category]) grouped[data.category] = [];
+                grouped[data.category].push(data);
+            });
+
+            for (const cat in grouped) {
+                list.innerHTML += `<div class="col-12 category-header">${cat}</div>`;
+                grouped[cat].forEach(m => {
+                    list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-white text-dark border p-2">${m.name} (${m.price/1000}k) <b class="text-danger ms-1" onclick="xoaMon('${m.id}')" style="cursor:pointer">×</b></span></div>`;
+                });
+            }
+            // Reset input đặt món khi menu đổi
+            document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         });
+
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- Logic Đặt Món ---
+        // --- ĐẶT MÓN ---
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
-            const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
-            const inputHtml = `<div class="row g-2 mb-1 order-item-row"><div class="col-8">${selectHtml}</div><div class="col-3"><input type="number" class="form-control dish-qty" value="1" min="1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`;
-            container.insertAdjacentHTML('beforeend', inputHtml);
+            let groups = menuItems.reduce((acc, item) => {
+                if (!acc[item.category]) acc[item.category] = [];
+                acc[item.category].push(item);
+                return acc;
+            }, {});
+
+            let options = "";
+            for (const cat in groups) {
+                options += `<optgroup label="${cat}">`;
+                groups[cat].forEach(m => options += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`);
+                options += `</optgroup>`;
+            }
+
+            const html = `<div class="row g-2 mb-1 order-item-row"><div class="col-8"><select class="form-select dish-select">${options}</select></div><div class="col-3"><input type="number" class="form-control dish-qty" value="1" min="1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`;
+            container.insertAdjacentHTML('beforeend', html);
         };
 
         window.datMon = async () => {
-            const customer = document.getElementById('order-customer').value;
-            if(!customer) return alert("Nhập tên khách!");
+            const khach = document.getElementById('order-customer').value;
+            if(!khach) return alert("Nhập tên khách!");
             const rows = document.querySelectorAll('.order-item-row');
-            let danhSachMon = []; let tongTien = 0;
+            let ds = []; let tong = 0;
             rows.forEach(row => {
-                const select = row.querySelector('.dish-select'); const option = select.options[select.selectedIndex];
-                const qty = parseInt(row.querySelector('.dish-qty').value); const price = parseInt(option.dataset.price);
-                danhSachMon.push({name: option.dataset.name, price: price, qty: qty});
-                tongTien += price * qty;
+                const sel = row.querySelector('.dish-select').selectedOptions[0];
+                const qty = parseInt(row.querySelector('.dish-qty').value);
+                const price = parseInt(sel.dataset.price);
+                ds.push({ name: sel.dataset.name, price, qty });
+                tong += price * qty;
             });
-            if(danhSachMon.length === 0) return alert("Thêm món!");
-            await addDoc(collection(db, "orders"), { khach: customer, danhSachMon: danhSachMon, tongTien: tongTien, trangThai: "dang_cho", thoiGian: Timestamp.now() });
+            if(ds.length === 0) return alert("Chưa chọn món!");
+            await addDoc(collection(db, "orders"), { khach, danhSachMon: ds, tongTien: tong, trangThai: "dang_cho", thoiGian: Timestamp.now() });
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- Logic Đơn hàng ---
-        const qOrders = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
-        onSnapshot(qOrders, snap => {
-            const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
+        // --- HIỂN THỊ ĐƠN HÀNG ---
+        onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
+            const listCho = document.getElementById('list-cho'); 
+            const listXong = document.getElementById('list-xong');
             listCho.innerHTML = ""; listXong.innerHTML = "";
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
-                const html = `<div class="order-box">${d.trangThai === 'dang_cho' ? `<span class="fw-bold text-danger fs-6" style="cursor:pointer" onclick="openEditModal('${docOrder.id}')">👤 ${d.khach} ✏️</span>` : `<span class="fw-bold text-danger fs-6">👤 ${d.khach}</span>`}<div class="small my-1">${items}</div><div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>${d.trangThai === 'dang_cho' ? `<button class="btn btn-sm btn-outline-danger w-100 mt-1" onclick="xoaDonHang('${docOrder.id}')">Hủy đơn</button>` : ''}</div>`;
+                const html = `<div class="order-box"><b>👤 ${d.khach}</b><div class="small my-1">${items}</div><div class="fw-bold text-end border-top">${d.tongTien.toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button></div>`;
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
         });
 
-        // --- Modal Sửa Đơn Nâng Cấp ---
-        let currentEditingOrderId = null;
-        window.openEditModal = async (orderId) => {
-            currentEditingOrderId = orderId;
-            const docSnap = await getDoc(doc(db, "orders", orderId));
-            const data = docSnap.data();
-            document.getElementById('modal-customer-name').innerText = data.khach;
-            const itemsList = document.getElementById('modal-items-list');
-            itemsList.innerHTML = "";
-            
-            data.danhSachMon.forEach((item) => {
-                addModalItemInput(item);
-            });
-            new bootstrap.Modal(document.getElementById('editOrderModal')).show();
-        };
-
-        window.addModalItemInput = (item = null) => {
-            const itemsList = document.getElementById('modal-items-list');
-            
-            // Tạo thẻ select cho món ăn
-            let selectHtml = `<select class="form-select modal-dish-select">`;
-            menuItems.forEach(m => {
-                const selected = item && m.name === item.name ? 'selected' : '';
-                selectHtml += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}" ${selected}>${m.name} - ${m.price.toLocaleString()}đ</option>`;
-            });
-            selectHtml += `</select>`;
-
-            const qty = item ? item.qty : 1;
-            const rowHtml = `<div class="row g-2 mb-2 modal-item-row">
-                <div class="col-6">${selectHtml}</div>
-                <div class="col-3"><input type="number" class="form-control modal-qty" value="${qty}" min="1"></div>
-                <div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div>
-            </div>`;
-            itemsList.insertAdjacentHTML('beforeend', rowHtml);
-        };
-
-        window.saveOrderEdit = async () => {
-            const rows = document.querySelectorAll('.modal-item-row');
-            let danhSachMon = []; let tongTien = 0;
-            rows.forEach(row => {
-                const select = row.querySelector('.modal-dish-select');
-                const option = select.options[select.selectedIndex];
-                const qty = parseInt(row.querySelector('.modal-qty').value);
-                const price = parseInt(option.dataset.price);
-                const name = option.dataset.name;
-                
-                danhSachMon.push({name, qty, price});
-                tongTien += qty * price;
-            });
-            
-            await updateDoc(doc(db, "orders", currentEditingOrderId), { danhSachMon: danhSachMon, tongTien: tongTien });
-            bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
-        };
-
-        window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
+        window.done = async (id) => updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
         window.pay = async (id) => {
-            if(!confirm(`Thanh toán đơn này?`)) return;
-            const orderRef = doc(db, "orders", id); const orderSnap = await getDoc(orderRef);
-            const data = orderSnap.data(); const dateStr = formatDate(data.thoiGian.toDate());
-            const reportRef = doc(db, "REPORTS", dateStr);
-            let up = { all_total: increment(data.tongTien) };
-            data.danhSachMon.forEach(m => { up[`${m.name}_qty`] = increment(m.qty); up[`${m.name}_amt`] = increment(m.price * m.qty); });
-            await setDoc(reportRef, up, { merge: true });
-            await updateDoc(orderRef, { trangThai: "da_thanh_toan" });
-            alert("✅ Thành công!");
+            if(confirm("Thanh toán?")) await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan" });
         };
-
-        window.xoaDonHang = async (id) => { if(confirm("Hủy đơn này?")) await deleteDoc(doc(db, "orders", id)); };
-
-        // --- Logic Lịch sử & Báo cáo ---
-        window.loadHistory = () => {
-            const startVal = document.getElementById('h-start').value; const endVal = document.getElementById('h-end').value;
-            if(!startVal || !endVal) return alert("Chọn đủ ngày!");
-            const startDate = new Date(startVal); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999);
-            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
-            onSnapshot(qHistory, snap => {
-                const listHistory = document.getElementById('list-history'); listHistory.innerHTML = ""; let hasData = false;
-                snap.forEach(docOrder => {
-                    const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
-                    if(orderDate >= startDate && orderDate <= endDate) {
-                        hasData = true;
-                        let itemsTable = `<table class="table table-sm table-bordered mt-1 small"><thead class="table-light"><tr><th>Món</th><th>SL</th><th>Giá</th></tr></thead><tbody>`;
-                        d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
-                        itemsTable += `</tbody></table>`;
-                        listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d"><div class="d-flex justify-content-between"><div class="fw-bold text-primary">👤 ${d.khach}</div><div><span class="small text-muted">${formatDate(orderDate)}</span><b class="text-danger ms-2" onclick="xoaDonHang('${docOrder.id}')" style="cursor:pointer">×</b></div></div>${itemsTable}<div class="text-end fw-bold text-success fs-6">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div></div>`;
-                    }
-                });
-                if(!hasData) listHistory.innerHTML = "<div class='text-muted text-center p-3'>Không có dữ liệu.</div>";
-            });
-        };
-
-        window.xoaToanBoLichSu = async () => {
-            if(!confirm("⚠️ CẢNH BÁO: Bạn chắc chắn muốn XÓA TOÀN BỘ lịch sử đơn hàng đã thanh toán?")) return;
-            if(!confirm("❌ Việc này không thể hoàn tác. Xác nhận xóa?")) return;
-            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
-            const querySnapshot = await getDocs(qHistory);
-            let count = 0;
-            querySnapshot.forEach(async (docOrder) => { await deleteDoc(doc(db, "orders", docOrder.id)); count++; });
-            alert(`✅ Đã xóa ${count} đơn hàng trong lịch sử.`);
-            loadHistory();
-        };
-
-        window.loadReport = () => {
-            const startVal = document.getElementById('r-start').value; const endVal = document.getElementById('r-end').value;
-            if(!startVal || !endVal) return alert("Chọn đủ ngày!");
-            const startDate = new Date(startVal); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999);
-            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
-            onSnapshot(qHistory, snap => {
-                const table = document.getElementById('revenue-table'); let reportObj = { all_total: 0 }; let hasData = false;
-                snap.forEach(docOrder => {
-                    const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
-                    if(orderDate >= startDate && orderDate <= endDate) {
-                        hasData = true;
-                        d.danhSachMon.forEach(m => {
-                            reportObj.all_total += (m.price * m.qty);
-                            if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
-                            if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
-                            reportObj[m.name+"_qty"] += m.qty; reportObj[m.name+"_amt"] += (m.price * m.qty);
-                        });
-                    }
-                });
-                if(!hasData) { table.innerHTML = "<tr><td colspan='3'>Không có dữ liệu</td></tr>"; document.getElementById('total-thu').innerText = "0đ"; return; }
-                document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
-                let html = "";
-                Object.keys(reportObj).forEach(k => { if(k.endsWith("_qty")) { const name = k.replace("_qty", ""); html += `<tr><td class="text-start">${name}</td><td>${reportObj[k]}</td><td class="text-end">${reportObj[name+"_amt"].toLocaleString()}đ</td></tr>`; } });
-                table.innerHTML = html;
-            });
-        };
-
-        loadHistory(); loadReport();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
