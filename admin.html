@@ -11,43 +11,17 @@
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
         
-        /* Style cho Panel Quản Lý (Menu bên trái) */
-        #admin-panel {
-            display: none;
-            position: fixed;
-            top: 60px;
-            left: 15px;
-            width: 250px;
-            height: calc(100vh - 80px);
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            z-index: 999;
-            transition: all 0.3s;
-            overflow-y: auto;
-        }
+        #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; transition: all 0.3s; overflow-y: auto; }
         #admin-panel.show { display: block; }
         .admin-menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-weight: bold; transition: 0.2s; }
         .admin-menu-item:hover { background-color: #f8f9fa; color: #0d6efd; }
 
-        /* Style cho các trang nội dung toàn màn hình */
-        .admin-page {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: white;
-            z-index: 1001;
-            padding: 20px;
-            overflow-y: auto;
-        }
+        .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
         
         .order-input { margin-bottom: 5px; }
+        .modal-item-row { border-bottom: 1px solid #eee; padding-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -128,7 +102,27 @@
     </div>
 
     <div class="modal fade" id="editOrderModal" tabindex="-1">
-        <div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Sửa đơn: <span id="modal-customer-name"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="modal-order-content"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button><button type="button" class="btn btn-primary" onclick="saveOrderEdit()">Lưu</button></div></div></div>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Sửa đơn: <span id="modal-customer-name"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-order-content">
+                    <div class="row fw-bold text-center">
+                        <div class="col-6">Tên món</div>
+                        <div class="col-3">SL</div>
+                        <div class="col-3">Xóa</div>
+                    </div>
+                    <div id="modal-items-list"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="addModalItemInput()">+ Thêm món vào đơn</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" onclick="saveOrderEdit()">Lưu thay đổi</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -175,7 +169,7 @@
         // --- Logic Đặt Món ---
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
-            const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
+            const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
             const inputHtml = `<div class="row g-2 mb-1 order-item-row"><div class="col-8">${selectHtml}</div><div class="col-3"><input type="number" class="form-control dish-qty" value="1" min="1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`;
             container.insertAdjacentHTML('beforeend', inputHtml);
         };
@@ -188,7 +182,7 @@
             rows.forEach(row => {
                 const select = row.querySelector('.dish-select'); const option = select.options[select.selectedIndex];
                 const qty = parseInt(row.querySelector('.dish-qty').value); const price = parseInt(option.dataset.price);
-                danhSachMon.push({name: option.text.split(' - ')[0], price: price, qty: qty});
+                danhSachMon.push({name: option.dataset.name, price: price, qty: qty});
                 tongTien += price * qty;
             });
             if(danhSachMon.length === 0) return alert("Thêm món!");
@@ -210,31 +204,56 @@
             });
         });
 
-        // Modal Sửa Đơn
+        // --- Modal Sửa Đơn Nâng Cấp ---
         let currentEditingOrderId = null;
         window.openEditModal = async (orderId) => {
             currentEditingOrderId = orderId;
             const docSnap = await getDoc(doc(db, "orders", orderId));
             const data = docSnap.data();
             document.getElementById('modal-customer-name').innerText = data.khach;
-            const content = document.getElementById('modal-order-content');
-            let html = '<div id="modal-items-list">';
-            data.danhSachMon.forEach((item, index) => {
-                html += `<div class="row g-2 mb-2 modal-item-row"><div class="col-6"><input type="text" class="form-control" value="${item.name}" readonly></div><div class="col-3"><input type="number" class="form-control modal-qty" value="${item.qty}" min="1"></div><div class="col-3"><input type="number" class="form-control modal-price" value="${item.price}" readonly></div></div>`;
+            const itemsList = document.getElementById('modal-items-list');
+            itemsList.innerHTML = "";
+            
+            data.danhSachMon.forEach((item) => {
+                addModalItemInput(item);
             });
-            html += '</div>'; content.innerHTML = html;
             new bootstrap.Modal(document.getElementById('editOrderModal')).show();
+        };
+
+        window.addModalItemInput = (item = null) => {
+            const itemsList = document.getElementById('modal-items-list');
+            
+            // Tạo thẻ select cho món ăn
+            let selectHtml = `<select class="form-select modal-dish-select">`;
+            menuItems.forEach(m => {
+                const selected = item && m.name === item.name ? 'selected' : '';
+                selectHtml += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}" ${selected}>${m.name} - ${m.price.toLocaleString()}đ</option>`;
+            });
+            selectHtml += `</select>`;
+
+            const qty = item ? item.qty : 1;
+            const rowHtml = `<div class="row g-2 mb-2 modal-item-row">
+                <div class="col-6">${selectHtml}</div>
+                <div class="col-3"><input type="number" class="form-control modal-qty" value="${qty}" min="1"></div>
+                <div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div>
+            </div>`;
+            itemsList.insertAdjacentHTML('beforeend', rowHtml);
         };
 
         window.saveOrderEdit = async () => {
             const rows = document.querySelectorAll('.modal-item-row');
             let danhSachMon = []; let tongTien = 0;
             rows.forEach(row => {
-                const name = row.querySelector('input[type="text"]').value;
+                const select = row.querySelector('.modal-dish-select');
+                const option = select.options[select.selectedIndex];
                 const qty = parseInt(row.querySelector('.modal-qty').value);
-                const price = parseInt(row.querySelector('.modal-price').value);
-                danhSachMon.push({name, qty, price}); tongTien += qty * price;
+                const price = parseInt(option.dataset.price);
+                const name = option.dataset.name;
+                
+                danhSachMon.push({name, qty, price});
+                tongTien += qty * price;
             });
+            
             await updateDoc(doc(db, "orders", currentEditingOrderId), { danhSachMon: danhSachMon, tongTien: tongTien });
             bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
         };
@@ -276,20 +295,13 @@
             });
         };
 
-        // --- HÀM XÓA TOÀN BỘ LỊCH SỬ ---
         window.xoaToanBoLichSu = async () => {
             if(!confirm("⚠️ CẢNH BÁO: Bạn chắc chắn muốn XÓA TOÀN BỘ lịch sử đơn hàng đã thanh toán?")) return;
             if(!confirm("❌ Việc này không thể hoàn tác. Xác nhận xóa?")) return;
-            
             const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
             const querySnapshot = await getDocs(qHistory);
-            
             let count = 0;
-            querySnapshot.forEach(async (docOrder) => {
-                await deleteDoc(doc(db, "orders", docOrder.id));
-                count++;
-            });
-            
+            querySnapshot.forEach(async (docOrder) => { await deleteDoc(doc(db, "orders", docOrder.id)); count++; });
             alert(`✅ Đã xóa ${count} đơn hàng trong lịch sử.`);
             loadHistory();
         };
