@@ -40,19 +40,28 @@
         </div>
 
         <div class="admin-card border-top border-secondary border-4">
-            <h5 class="fw-bold mb-3">🔍 TÌM KIẾM DỮ LIỆU</h5>
-            <div class="d-flex gap-2 mb-3">
-                <input type="date" id="select-date" class="form-control">
-                <button class="btn btn-secondary fw-bold" onclick="loadDataByDate()">TÌM</button>
+            <h5 class="fw-bold mb-3">🔍 TÌM KIẾM DỮ LIỆU THEO KHOẢNG THỜI GIAN</h5>
+            <div class="row g-2 mb-3">
+                <div class="col-5">
+                    <label class="small text-muted">Từ ngày</label>
+                    <input type="date" id="date-start" class="form-control">
+                </div>
+                <div class="col-5">
+                    <label class="small text-muted">Đến ngày</label>
+                    <input type="date" id="date-end" class="form-control">
+                </div>
+                <div class="col-2 d-flex align-items-end">
+                    <button class="btn btn-secondary w-100 fw-bold" onclick="loadDataByRange()">TÌM</button>
+                </div>
             </div>
             
             <details open>
-                <summary class="text-secondary">📜 LỊCH SỬ ĐƠN HÀNG (NGÀY CHỌN)</summary>
+                <summary class="text-secondary">📜 LỊCH SỬ ĐƠN HÀNG</summary>
                 <div id="list-history" style="max-height: 400px; overflow-y: auto;"></div>
             </details>
 
             <details open class="mt-3">
-                <summary class="text-warning">📊 DOANH THU (NGÀY CHỌN)</summary>
+                <summary class="text-warning">📊 TỔNG DOANH THU</summary>
                 <table class="table table-bordered table-sm text-center mt-2">
                     <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
                     <tbody id="revenue-table"></tbody>
@@ -79,11 +88,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        // Helper: Định dạng ngày dd-mm-yyyy
         const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
         
         // Mặc định chọn ngày hôm nay
-        document.getElementById('select-date').valueAsDate = new Date();
+        document.getElementById('date-start').valueAsDate = new Date();
+        document.getElementById('date-end').valueAsDate = new Date();
 
         // --- QUẢN LÝ THỰC ĐƠN ---
         window.themMon = async () => {
@@ -130,7 +139,6 @@
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
         
-        // --- THANH TOÁN (LƯU LỊCH SỬ) ---
         window.pay = async (id) => {
             if(!confirm(`Thanh toán đơn này?`)) return;
             const orderRef = doc(db, "orders", id);
@@ -138,84 +146,99 @@
             const data = orderSnap.data();
 
             const dateStr = formatDate(data.thoiGian.toDate());
-            const monthStr = dateStr.substring(3);
             
-            const updateReport = async (reportId) => {
-                const reportRef = doc(db, "REPORTS", reportId);
-                let up = { all_total: increment(data.tongTien) };
-                data.danhSachMon.forEach(m => {
-                    up[`${m.name}_qty`] = increment(m.qty);
-                    up[`${m.name}_amt`] = increment(m.price * m.qty);
-                });
-                await setDoc(reportRef, up, { merge: true });
-            };
-
-            await updateReport(dateStr);
-            await updateReport(monthStr);
+            // Cập nhật doanh thu theo ngày
+            const reportRef = doc(db, "REPORTS", dateStr);
+            let up = { all_total: increment(data.tongTien) };
+            data.danhSachMon.forEach(m => {
+                up[`${m.name}_qty`] = increment(m.qty);
+                up[`${m.name}_amt`] = increment(m.price * m.qty);
+            });
+            await setDoc(reportRef, up, { merge: true });
 
             await updateDoc(orderRef, { trangThai: "da_thanh_toan" });
             alert("✅ Thanh toán thành công!");
         };
 
-        // --- TÌM KIẾM LỊCH SỬ & DOANH THU THEO NGÀY (CẬP NHẬT CẤU TRÚC) ---
-        window.loadDataByDate = () => {
-            const dateVal = document.getElementById('select-date').value;
-            if(!dateVal) return;
-            const selectedDateStr = formatDate(new Date(dateVal));
-            
+        // --- TÌM KIẾM DỮ LIỆU THEO KHOẢNG THỜI GIAN ---
+        window.loadDataByRange = () => {
+            const startVal = document.getElementById('date-start').value;
+            const endVal = document.getElementById('date-end').value;
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày bắt đầu và kết thúc!");
+
+            const startDate = new Date(startVal);
+            const endDate = new Date(endVal);
+            endDate.setHours(23, 59, 59, 999); // Set đến cuối ngày kết thúc
+
             // 1. Load Lịch sử đơn đã thanh toán - cấu trúc BẢNG
             const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
             onSnapshot(qHistory, snap => {
                 const listHistory = document.getElementById('list-history');
                 listHistory.innerHTML = "";
                 let hasData = false;
+                let totalInRange = 0;
+
+                // Tạm thời dùng object để nhóm doanh thu món theo khoảng ngày
+                let reportObj = { all_total: 0 };
 
                 snap.forEach(docOrder => {
                     const d = docOrder.data();
-                    if(formatDate(d.thoiGian.toDate()) === selectedDateStr) {
+                    const orderDate = d.thoiGian.toDate();
+                    
+                    if(orderDate >= startDate && orderDate <= endDate) {
                         hasData = true;
+                        totalInRange += d.tongTien;
                         
-                        // Tạo bảng chi tiết cho từng đơn hàng
+                        // --- Xử lý cho phần Lịch sử ---
                         let itemsTable = `<table class="table table-sm table-bordered mt-1 small">
                             <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Giá</th></tr></thead><tbody>`;
                         
                         d.danhSachMon.forEach(m => {
                             itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`;
+                            
+                            // --- Xử lý cho phần Doanh thu tổng ---
+                            reportObj.all_total += (m.price * m.qty);
+                            if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
+                            if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
+                            reportObj[m.name+"_qty"] += m.qty;
+                            reportObj[m.name+"_amt"] += (m.price * m.qty);
                         });
                         
                         itemsTable += `</tbody></table>`;
+                        const dateStr = formatDate(orderDate);
 
                         listHistory.innerHTML += `
                             <div class="order-box mb-3">
-                                <div class="fw-bold text-primary">👤 Khách: ${d.khach}</div>
+                                <div class="d-flex justify-content-between">
+                                    <div class="fw-bold text-primary">👤 Khách: ${d.khach}</div>
+                                    <div class="small text-muted">${dateStr}</div>
+                                </div>
                                 ${itemsTable}
                                 <div class="text-end fw-bold text-success fs-6">Tổng đơn: ${Number(d.tongTien).toLocaleString()}đ</div>
                             </div>
                         `;
                     }
                 });
-                if(!hasData) listHistory.innerHTML = "<div class='text-muted text-center p-3'>Không có đơn hàng nào ngày này.</div>";
-            });
 
-            // 2. Load Doanh thu của ngày đó
-            onSnapshot(doc(db, "REPORTS", selectedDateStr), dSnap => {
+                if(!hasData) listHistory.innerHTML = "<div class='text-muted text-center p-3'>Không có đơn hàng nào trong khoảng thời gian này.</div>";
+
+                // --- HIỂN THỊ DOANH THU TỔNG ---
                 const table = document.getElementById('revenue-table');
-                if(!dSnap.exists()) { table.innerHTML = "<tr><td colspan='3'>Không có dữ liệu</td></tr>"; document.getElementById('total-thu').innerText = "0đ"; return; }
+                if(!hasData) { table.innerHTML = "<tr><td colspan='3'>Không có dữ liệu</td></tr>"; document.getElementById('total-thu').innerText = "0đ"; return; }
                 
-                const data = dSnap.data();
-                document.getElementById('total-thu').innerText = (data.all_total || 0).toLocaleString() + "đ";
+                document.getElementById('total-thu').innerText = totalInRange.toLocaleString() + "đ";
                 let html = "";
-                Object.keys(data).forEach(k => {
+                Object.keys(reportObj).forEach(k => {
                     if(k.endsWith("_qty")) {
                         const name = k.replace("_qty", "");
-                        html += `<tr><td class="text-start">${name}</td><td>${data[k]}</td><td class="text-end">${data[name+"_amt"].toLocaleString()}đ</td></tr>`;
+                        html += `<tr><td class="text-start">${name}</td><td>${reportObj[k]}</td><td class="text-end">${reportObj[name+"_amt"].toLocaleString()}đ</td></tr>`;
                     }
                 });
                 table.innerHTML = html;
             });
         };
         
-        loadDataByDate();
+        loadDataByRange(); // Chạy lần đầu
     </script>
 </body>
 </html>
