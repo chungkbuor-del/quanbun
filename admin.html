@@ -3,124 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Quán</title>
+    <title>Quản lý Quán - Đăng nhập</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f0f2f5; padding: 10px; font-family: sans-serif; }
+        body { background: #f0f2f5; font-family: sans-serif; }
+        .login-card { max-width: 400px; margin: 100px auto; background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .app-content { display: none; } /* Ẩn toàn bộ nội dung web khi chưa đăng nhập */
+        
+        /* ... giữ nguyên các style cũ của admin-card, order-box, v.v ... */
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
-        
         #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; transition: all 0.3s; overflow-y: auto; }
         #admin-panel.show { display: block; }
         .admin-menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-weight: bold; transition: 0.2s; }
         .admin-menu-item:hover { background-color: #f8f9fa; color: #0d6efd; }
-
         .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
-        
         .order-input { margin-bottom: 5px; }
         .modal-item-row { border-bottom: 1px solid #eee; padding-bottom: 5px; }
     </style>
 </head>
 <body>
     
-    <h3 class="text-center fw-bold text-danger mb-4">🔔 QUẢN LÝ QUÁN</h3>
-
-    <button id="btn-toggle-admin" class="btn btn-dark" onclick="toggleAdminPanel()">≡ Quản Lý</button>
-
-    <div id="admin-panel">
-        <h5 class="text-center fw-bold text-danger">⚙️ MENU</h5>
-        <div class="admin-menu-item text-primary" onclick="openPage('page-menu')">➕ Thực đơn</div>
-        <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
-        <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
+    <div id="login-page" class="login-card">
+        <h3 class="text-center fw-bold text-danger mb-4">🔐 ĐĂNG NHẬP</h3>
+        <input type="email" id="email" class="form-control mb-3" placeholder="Email">
+        <input type="password" id="password" class="form-control mb-3" placeholder="Mật khẩu">
+        <button class="btn btn-danger w-100 fw-bold" onclick="login()">ĐĂNG NHẬP</button>
+        <p class="text-center mt-3 text-muted small">Chỉ chủ quán mới có quyền truy cập</p>
     </div>
 
-    <div id="page-menu" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-menu')">&times;</span>
-        <h3 class="text-primary text-center">➕ QUẢN LÝ THỰC ĐƠN</h3>
-        <div class="row g-2 justify-content-center mt-3">
-            <div class="col-6 col-md-4"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
-            <div class="col-4 col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá"></div>
-            <div class="col-2 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
+    <div id="app-content" class="app-content">
+        <h3 class="text-center fw-bold text-danger mb-4">🔔 QUẢN LÝ QUÁN <button class="btn btn-sm btn-outline-dark" onclick="logout()">Thoát</button></h3>
+
+        <button id="btn-toggle-admin" class="btn btn-dark" onclick="toggleAdminPanel()">≡ Quản Lý</button>
+
+        <div id="admin-panel">
+            <h5 class="text-center fw-bold text-danger">⚙️ MENU</h5>
+            <div class="admin-menu-item text-primary" onclick="openPage('page-menu')">➕ Thực đơn</div>
+            <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
+            <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
         </div>
-        <div id="menu-list-admin" class="mt-4 row justify-content-center"></div>
-    </div>
 
-    <div id="page-history" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-history')">&times;</span>
-        <h3 class="text-secondary text-center">📜 LỊCH SỬ ĐƠN HÀNG</h3>
-        
-        <div class="admin-card">
-            <div class="row g-2 justify-content-center">
-                <div class="col-4 col-md-3"><input type="date" id="h-start" class="form-control"></div>
-                <div class="col-4 col-md-3"><input type="date" id="h-end" class="form-control"></div>
-                <div class="col-2 col-md-1"><button class="btn btn-secondary w-100" onclick="loadHistory()">TÌM</button></div>
+        <div id="page-menu" class="admin-page">
+            <span class="close-page-btn" onclick="closePage('page-menu')">&times;</span>
+            <h3 class="text-primary text-center">➕ QUẢN LÝ THỰC ĐƠN</h3>
+            <div class="row g-2 justify-content-center mt-3">
+                <div class="col-6 col-md-4"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
+                <div class="col-4 col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá"></div>
+                <div class="col-2 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
             </div>
-            <button class="btn btn-danger w-100 mt-3 fw-bold" onclick="xoaToanBoLichSu()">🗑️ XÓA TOÀN BỘ LỊCH SỬ</button>
+            <div id="menu-list-admin" class="mt-4 row justify-content-center"></div>
         </div>
-        
-        <div id="list-history" class="mt-4" style="max-height: 60vh; overflow-y: auto;"></div>
-    </div>
 
-    <div id="page-report" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-report')">&times;</span>
-        <h3 class="text-warning text-center">📊 BÁO CÁO DOANH THU</h3>
-        <div class="row g-2 justify-content-center mt-3">
-            <div class="col-4 col-md-3"><input type="date" id="r-start" class="form-control"></div>
-            <div class="col-4 col-md-3"><input type="date" id="r-end" class="form-control"></div>
-            <div class="col-2 col-md-1"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button></div>
+        <div id="page-history" class="admin-page">
+            <span class="close-page-btn" onclick="closePage('page-history')">&times;</span>
+            <h3 class="text-secondary text-center">📜 LỊCH SỬ ĐƠN HÀNG</h3>
+            <div class="admin-card">
+                <div class="row g-2 justify-content-center">
+                    <div class="col-4 col-md-3"><input type="date" id="h-start" class="form-control"></div>
+                    <div class="col-4 col-md-3"><input type="date" id="h-end" class="form-control"></div>
+                    <div class="col-2 col-md-1"><button class="btn btn-secondary w-100" onclick="loadHistory()">TÌM</button></div>
+                </div>
+                <button class="btn btn-danger w-100 mt-3 fw-bold" onclick="xoaToanBoLichSu()">🗑️ XÓA TOÀN BỘ LỊCH SỬ</button>
+            </div>
+            <div id="list-history" class="mt-4" style="max-height: 60vh; overflow-y: auto;"></div>
         </div>
-        <div class="row justify-content-center mt-3">
-            <div class="col-12 col-md-8">
-                <table class="table table-bordered table-sm text-center">
-                    <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
-                    <tbody id="revenue-table"></tbody>
-                </table>
-                <div class="text-end fw-bold fs-4 text-success">TỔNG: <span id="total-thu">0đ</span></div>
+
+        <div id="page-report" class="admin-page">
+            <span class="close-page-btn" onclick="closePage('page-report')">&times;</span>
+            <h3 class="text-warning text-center">📊 BÁO CÁO DOANH THU</h3>
+            <div class="row g-2 justify-content-center mt-3">
+                <div class="col-4 col-md-3"><input type="date" id="r-start" class="form-control"></div>
+                <div class="col-4 col-md-3"><input type="date" id="r-end" class="form-control"></div>
+                <div class="col-2 col-md-1"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button></div>
+            </div>
+            <div class="row justify-content-center mt-3">
+                <div class="col-12 col-md-8">
+                    <table class="table table-bordered table-sm text-center">
+                        <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Thành tiền</th></tr></thead>
+                        <tbody id="revenue-table"></tbody>
+                    </table>
+                    <div class="text-end fw-bold fs-4 text-success">TỔNG: <span id="total-thu">0đ</span></div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="container-fluid">
-        <div class="admin-card">
-            <h5 class="text-center fw-bold text-primary">📝 TẠO ĐƠN MỚI</h5>
-            <div class="row g-2 mb-2">
-                <div class="col-12"><input type="text" id="order-customer" class="form-control" placeholder="Tên khách hàng"></div>
+        <div class="container-fluid">
+            <div class="admin-card">
+                <h5 class="text-center fw-bold text-primary">📝 TẠO ĐƠN MỚI</h5>
+                <div class="row g-2 mb-2">
+                    <div class="col-12"><input type="text" id="order-customer" class="form-control" placeholder="Tên khách hàng"></div>
+                </div>
+                <div id="order-items-input"></div>
+                <button class="btn btn-outline-primary btn-sm mb-2" onclick="addOrderItemInput()">+ Thêm món</button>
+                <button class="btn btn-success w-100 fw-bold" onclick="datMon()">ĐẶT MÓN</button>
             </div>
-            <div id="order-items-input"></div>
-            <button class="btn btn-outline-primary btn-sm mb-2" onclick="addOrderItemInput()">+ Thêm món</button>
-            <button class="btn btn-success w-100 fw-bold" onclick="datMon()">ĐẶT MÓN</button>
-        </div>
-
-        <h3 class="text-center fw-bold text-danger mb-4">🛒 ĐƠN HÀNG HÔM NAY</h3>
-        <div class="row">
-            <div class="col-md-6"><div class="admin-card"><h5 class="text-danger fw-bold text-center">ĐANG CHỜ</h5><div id="list-cho"></div></div></div>
-            <div class="col-md-6"><div class="admin-card"><h5 class="text-success fw-bold text-center">ĐÃ XONG</h5><div id="list-xong"></div></div></div>
+            <h3 class="text-center fw-bold text-danger mb-4">🛒 ĐƠN HÀNG HÔM NAY</h3>
+            <div class="row">
+                <div class="col-md-6"><div class="admin-card"><h5 class="text-danger fw-bold text-center">ĐANG CHỜ</h5><div id="list-cho"></div></div></div>
+                <div class="col-md-6"><div class="admin-card"><h5 class="text-success fw-bold text-center">ĐÃ XONG</h5><div id="list-xong"></div></div></div>
+            </div>
         </div>
     </div>
 
     <div class="modal fade" id="editOrderModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Sửa đơn: <span id="modal-customer-name"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title">Sửa đơn: <span id="modal-customer-name"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body" id="modal-order-content">
-                    <div class="row fw-bold text-center">
-                        <div class="col-6">Tên món</div>
-                        <div class="col-3">SL</div>
-                        <div class="col-3">Xóa</div>
-                    </div>
+                    <div class="row fw-bold text-center"><div class="col-6">Tên món</div><div class="col-3">SL</div><div class="col-3">Xóa</div></div>
                     <div id="modal-items-list"></div>
                     <button class="btn btn-sm btn-outline-primary mt-2" onclick="addModalItemInput()">+ Thêm món vào đơn</button>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-primary" onclick="saveOrderEdit()">Lưu thay đổi</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button><button type="button" class="btn btn-primary" onclick="saveOrderEdit()">Lưu thay đổi</button></div>
             </div>
         </div>
     </div>
@@ -128,6 +126,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // NHẬP THÊM AUTH Ở ĐÂY
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -139,6 +139,64 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app); // Khởi tạo Auth
+        
+        // --- Logic Đăng Nhập & Bảo Mật ---
+        
+        // 1. Kiểm tra trạng thái đăng nhập
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Nếu đã đăng nhập, hiện nội dung web
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                initApp(); // Khởi tạo dữ liệu
+            } else {
+                // Nếu chưa, hiện trang đăng nhập
+                document.getElementById('login-page').style.display = 'block';
+                document.getElementById('app-content').style.display = 'none';
+            }
+        });
+
+        // 2. Hàm Đăng Nhập
+        window.login = () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            signInWithEmailAndPassword(auth, email, password)
+                .catch((error) => alert("Sai tài khoản hoặc mật khẩu!"));
+        };
+
+        // 3. Hàm Đăng Xuất
+        window.logout = () => signOut(auth);
+
+        // --- Logic Khởi tạo (Chạy sau khi login) ---
+        function initApp() {
+            // ... (di chuyển toàn bộ logic Firestore cũ vào đây) ...
+            loadHistory(); loadReport();
+            
+            // Logic Thực đơn (Firestore cũ)
+            onSnapshot(collection(db, "MENU"), snap => {
+                const list = document.getElementById('menu-list-admin'); list.innerHTML = ""; menuItems = [];
+                snap.forEach(d => { menuItems.push({id: d.id, ...d.data()}); list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${d.data().name} (${(d.data().price/1000).toFixed(1)}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span></div>`; });
+                addOrderItemInput();
+            });
+
+            // Logic Đơn hàng (Firestore cũ)
+            const qOrders = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
+            onSnapshot(qOrders, snap => {
+                const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
+                listCho.innerHTML = ""; listXong.innerHTML = "";
+                snap.forEach(docOrder => {
+                    const d = docOrder.data();
+                    if (d.trangThai === "da_thanh_toan") return;
+                    const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
+                    const html = `<div class="order-box">${d.trangThai === 'dang_cho' ? `<span class="fw-bold text-danger fs-6" style="cursor:pointer" onclick="openEditModal('${docOrder.id}')">👤 ${d.khach} ✏️</span>` : `<span class="fw-bold text-danger fs-6">👤 ${d.khach}</span>`}<div class="small my-1">${items}</div><div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>${d.trangThai === 'dang_cho' ? `<button class="btn btn-sm btn-outline-danger w-100 mt-1" onclick="xoaDonHang('${docOrder.id}')">Hủy đơn</button>` : ''}</div>`;
+                    d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
+                });
+            });
+        }
+        
+        // ... (Giữ nguyên các hàm bổ trợ: themMon, datMon, xoaMon, xoaDonHang, addOrderItemInput, pay, done, openEditModal, saveOrderEdit, loadHistory, loadReport, xoaToanBoLichSu, toggleAdminPanel, openPage, closePage, formatDate) ...
+        // Lưu ý: Cần đảm bảo các biến global như menuItems, currentEditingOrderId vẫn tồn tại ngoài initApp()
         
         let menuItems = [];
         const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
@@ -152,21 +210,14 @@
         window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); document.getElementById('admin-panel').classList.remove('show'); };
         window.closePage = (pageId) => { document.getElementById(pageId).classList.remove('show'); };
 
-        // --- Logic Thực đơn ---
         window.themMon = async () => {
             const name = document.getElementById('m-name').value;
             const price = parseInt(document.getElementById('m-price').value);
             if(name && price) { await addDoc(collection(db, "MENU"), { name, price }); document.getElementById('m-name').value = ""; document.getElementById('m-price').value = ""; }
         };
 
-        onSnapshot(collection(db, "MENU"), snap => {
-            const list = document.getElementById('menu-list-admin'); list.innerHTML = ""; menuItems = [];
-            snap.forEach(d => { menuItems.push({id: d.id, ...d.data()}); list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${d.data().name} (${(d.data().price/1000).toFixed(1)}k) <b class="text-danger ms-1" onclick="xoaMon('${d.id}')" style="cursor:pointer">×</b></span></div>`; });
-            addOrderItemInput();
-        });
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- Logic Đặt Món ---
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
             const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
@@ -190,21 +241,6 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- Logic Đơn hàng ---
-        const qOrders = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
-        onSnapshot(qOrders, snap => {
-            const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
-            listCho.innerHTML = ""; listXong.innerHTML = "";
-            snap.forEach(docOrder => {
-                const d = docOrder.data();
-                if (d.trangThai === "da_thanh_toan") return;
-                const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
-                const html = `<div class="order-box">${d.trangThai === 'dang_cho' ? `<span class="fw-bold text-danger fs-6" style="cursor:pointer" onclick="openEditModal('${docOrder.id}')">👤 ${d.khach} ✏️</span>` : `<span class="fw-bold text-danger fs-6">👤 ${d.khach}</span>`}<div class="small my-1">${items}</div><div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>${d.trangThai === 'dang_cho' ? `<button class="btn btn-sm btn-outline-danger w-100 mt-1" onclick="xoaDonHang('${docOrder.id}')">Hủy đơn</button>` : ''}</div>`;
-                d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
-            });
-        });
-
-        // --- Modal Sửa Đơn Nâng Cấp ---
         let currentEditingOrderId = null;
         window.openEditModal = async (orderId) => {
             currentEditingOrderId = orderId;
@@ -213,7 +249,6 @@
             document.getElementById('modal-customer-name').innerText = data.khach;
             const itemsList = document.getElementById('modal-items-list');
             itemsList.innerHTML = "";
-            
             data.danhSachMon.forEach((item) => {
                 addModalItemInput(item);
             });
@@ -222,21 +257,14 @@
 
         window.addModalItemInput = (item = null) => {
             const itemsList = document.getElementById('modal-items-list');
-            
-            // Tạo thẻ select cho món ăn
             let selectHtml = `<select class="form-select modal-dish-select">`;
             menuItems.forEach(m => {
                 const selected = item && m.name === item.name ? 'selected' : '';
                 selectHtml += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}" ${selected}>${m.name} - ${m.price.toLocaleString()}đ</option>`;
             });
             selectHtml += `</select>`;
-
             const qty = item ? item.qty : 1;
-            const rowHtml = `<div class="row g-2 mb-2 modal-item-row">
-                <div class="col-6">${selectHtml}</div>
-                <div class="col-3"><input type="number" class="form-control modal-qty" value="${qty}" min="1"></div>
-                <div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div>
-            </div>`;
+            const rowHtml = `<div class="row g-2 mb-2 modal-item-row"><div class="col-6">${selectHtml}</div><div class="col-3"><input type="number" class="form-control modal-qty" value="${qty}" min="1"></div><div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`;
             itemsList.insertAdjacentHTML('beforeend', rowHtml);
         };
 
@@ -249,11 +277,8 @@
                 const qty = parseInt(row.querySelector('.modal-qty').value);
                 const price = parseInt(option.dataset.price);
                 const name = option.dataset.name;
-                
-                danhSachMon.push({name, qty, price});
-                tongTien += qty * price;
+                danhSachMon.push({name, qty, price}); tongTien += qty * price;
             });
-            
             await updateDoc(doc(db, "orders", currentEditingOrderId), { danhSachMon: danhSachMon, tongTien: tongTien });
             bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
         };
@@ -273,7 +298,6 @@
 
         window.xoaDonHang = async (id) => { if(confirm("Hủy đơn này?")) await deleteDoc(doc(db, "orders", id)); };
 
-        // --- Logic Lịch sử & Báo cáo ---
         window.loadHistory = () => {
             const startVal = document.getElementById('h-start').value; const endVal = document.getElementById('h-end').value;
             if(!startVal || !endVal) return alert("Chọn đủ ngày!");
@@ -332,8 +356,7 @@
                 table.innerHTML = html;
             });
         };
-
-        loadHistory(); loadReport();
+        
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
