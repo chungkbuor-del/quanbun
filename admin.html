@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Quán Ăn - Phân Nhóm</title>
+    <title>Quản lý Quán Ăn - Hỗ trợ xuống dòng</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #f0f2f5; padding: 10px; font-family: sans-serif; }
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* QUAN TRỌNG: Giúp tên món hiển thị được xuống dòng */
+        .dish-name-display { white-space: pre-line; line-height: 1.2; display: block; }
+        
         #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
         #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; overflow-y: auto; }
         #admin-panel.show { display: block; }
         .admin-menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-weight: bold; }
-        .admin-menu-item:hover { background-color: #f8f9fa; color: #0d6efd; }
         .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
@@ -30,57 +33,26 @@
         <h5 class="text-center fw-bold text-danger">⚙️ MENU</h5>
         <div class="admin-menu-item text-primary" onclick="openPage('page-menu')">➕ Thực đơn</div>
         <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
-        <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
     </div>
 
     <div id="page-menu" class="admin-page">
         <span class="close-page-btn" onclick="closePage('page-menu')">&times;</span>
         <h3 class="text-primary text-center">➕ QUẢN LÝ THỰC ĐƠN</h3>
         <div class="row g-2 justify-content-center mt-3">
-            <div class="col-6 col-md-3">
+            <div class="col-12 col-md-3">
                 <select id="m-category" class="form-select">
-                    <option value="BÚN-BÁNH CANH">BÚN-BÁNH CANH</option>
+                    <option value="BÚN">BÚN</option>
                     <option value="BÒ NÉ">BÒ NÉ</option>
-                    <option value="CHẢ CÁ">CHẢ CÁ</option>
-                    <option value="KHÁC">KHÁC</option>
+                    <option value="NƯỚC">NƯỚC</option>
                 </select>
             </div>
-            <div class="col-6 col-md-3"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
+            <div class="col-8 col-md-5">
+                <textarea id="m-name" class="form-control" rows="2" placeholder="Tên món (Nhấn Enter để xuống dòng ghi chú)"></textarea>
+            </div>
             <div class="col-4 col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá"></div>
-            <div class="col-2 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
+            <div class="col-12 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
         </div>
         <div id="menu-list-admin" class="mt-4 row justify-content-center"></div>
-    </div>
-
-    <div id="page-history" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-history')">&times;</span>
-        <h3 class="text-secondary text-center">📜 LỊCH SỬ ĐƠN HÀNG</h3>
-        <div class="admin-card">
-            <div class="row g-2 justify-content-center">
-                <div class="col-4"><input type="date" id="h-start" class="form-control"></div>
-                <div class="col-4"><input type="date" id="h-end" class="form-control"></div>
-                <div class="col-2"><button class="btn btn-secondary w-100" onclick="loadHistory()">TÌM</button></div>
-            </div>
-            <button class="btn btn-danger w-100 mt-3 fw-bold" onclick="xoaToanBoLichSu()">🗑️ XÓA TOÀN BỘ LỊCH SỬ</button>
-        </div>
-        <div id="list-history" class="mt-4"></div>
-    </div>
-
-    <div id="page-report" class="admin-page">
-        <span class="close-page-btn" onclick="closePage('page-report')">&times;</span>
-        <h3 class="text-warning text-center">📊 BÁO CÁO DOANH THU</h3>
-        <div class="row g-2 justify-content-center mt-3">
-            <div class="col-4"><input type="date" id="r-start" class="form-control"></div>
-            <div class="col-4"><input type="date" id="r-end" class="form-control"></div>
-            <div class="col-2"><button class="btn btn-warning w-100" onclick="loadReport()">TÌM</button></div>
-        </div>
-        <div class="mt-3">
-            <table class="table table-bordered text-center">
-                <thead class="table-light"><tr><th>Món</th><th>SL</th><th>Tiền</th></tr></thead>
-                <tbody id="revenue-table"></tbody>
-            </table>
-            <div class="text-end fw-bold fs-4 text-success">TỔNG: <span id="total-thu">0đ</span></div>
-        </div>
     </div>
 
     <div class="container-fluid">
@@ -101,7 +73,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -115,17 +87,14 @@
         const db = getFirestore(app);
         
         let menuItems = [];
-        const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
 
-        // Điều hướng
         window.toggleAdminPanel = () => document.getElementById('admin-panel').classList.toggle('show');
         window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); toggleAdminPanel(); };
         window.closePage = (pageId) => document.getElementById(pageId).classList.remove('show');
 
-        // --- QUẢN LÝ THỰC ĐƠN (PHÂN NHÓM) ---
         window.themMon = async () => {
             const category = document.getElementById('m-category').value;
-            const name = document.getElementById('m-name').value;
+            const name = document.getElementById('m-name').value; // Sẽ lấy cả ký tự xuống dòng
             const price = parseInt(document.getElementById('m-price').value);
             if(name && price) {
                 await addDoc(collection(db, "MENU"), { category, name, price });
@@ -148,16 +117,22 @@
             for (const cat in grouped) {
                 list.innerHTML += `<div class="col-12 category-header">${cat}</div>`;
                 grouped[cat].forEach(m => {
-                    list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-white text-dark border p-2">${m.name} (${m.price/1000}k) <b class="text-danger ms-1" onclick="xoaMon('${m.id}')" style="cursor:pointer">×</b></span></div>`;
+                    // Thêm class dish-name-display để hiển thị xuống dòng
+                    list.innerHTML += `
+                    <div class="col-auto m-1 text-center">
+                        <div class="badge bg-white text-dark border p-2 shadow-sm">
+                            <span class="dish-name-display text-primary fw-bold">${m.name}</span>
+                            <span class="d-block border-top mt-1">${m.price/1000}k</span>
+                            <b class="text-danger" onclick="xoaMon('${m.id}')" style="cursor:pointer">Xóa ×</b>
+                        </div>
+                    </div>`;
                 });
             }
-            // Reset input đặt món khi menu đổi
             document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         });
 
-        window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
+        window.xoaMon = async (id) => { if(confirm("Xóa món?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- ĐẶT MÓN ---
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
             let groups = menuItems.reduce((acc, item) => {
@@ -169,7 +144,11 @@
             let options = "";
             for (const cat in groups) {
                 options += `<optgroup label="${cat}">`;
-                groups[cat].forEach(m => options += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`);
+                groups[cat].forEach(m => {
+                    // Thay thế xuống dòng bằng dấu cách trong thẻ select để dễ nhìn
+                    let displayName = m.name.replace(/\n/g, " ");
+                    options += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${displayName} - ${m.price.toLocaleString()}đ</option>`;
+                });
                 options += `</optgroup>`;
             }
 
@@ -194,7 +173,6 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- HIỂN THỊ ĐƠN HÀNG ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); 
             const listXong = document.getElementById('list-xong');
@@ -202,18 +180,16 @@
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
-                const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
+                // Hiển thị xuống dòng ở danh sách đơn hàng
+                const items = d.danhSachMon.map(i => `<div class="mb-2">• <span class="dish-name-display d-inline-block align-top"><b>${i.name}</b></span> x${i.qty}</div>`).join('');
                 const html = `<div class="order-box"><b>👤 ${d.khach}</b><div class="small my-1">${items}</div><div class="fw-bold text-end border-top">${d.tongTien.toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button></div>`;
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
         });
 
         window.done = async (id) => updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
-        window.pay = async (id) => {
-            if(confirm("Thanh toán?")) await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan" });
-        };
+        window.pay = async (id) => { if(confirm("Thanh toán?")) await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan" }); };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
