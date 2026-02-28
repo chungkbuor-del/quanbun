@@ -40,8 +40,10 @@
         </div>
 
         <div class="admin-card border-top border-secondary border-4">
-            <h5 class="fw-bold mb-3">📜 LỊCH SỬ ĐƠN HÀNG</h5>
-            <div id="list-history" style="max-height: 300px; overflow-y: auto;"></div>
+            <details>
+                <summary class="text-secondary">📜 LỊCH SỬ ĐƠN HÀNG (ĐÃ THANH TOÁN)</summary>
+                <div id="list-history" style="max-height: 200px; overflow-y: auto;"></div>
+            </details>
         </div>
 
         <div class="admin-card border-top border-warning border-4 mt-3">
@@ -79,6 +81,7 @@
         const getTodayStr = () => new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
         let today = getTodayStr();
 
+        // --- QUẢN LÝ THỰC ĐƠN ---
         window.themMon = async () => {
             const name = document.getElementById('m-name').value;
             const price = parseInt(document.getElementById('m-price').value);
@@ -97,12 +100,9 @@
         });
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // --- QUẢN LÝ ĐƠN HÀNG ---
-        // SỬA LẠI QUERY ĐỂ NHẬN ĐÚNG TRẠNG THÁI
-        const qOrders = query(collection(db, "orders"), 
-            where("trangThai", "in", ["cho_xac_nhan", "da_xong"]),
-            orderBy("thoiGian", "desc")
-        );
+        // --- QUẢN LÝ ĐƠN HÀNG (HIỂN THỊ MỚI NHƯ CŨ) ---
+        // SỬA: Lọc các đơn chưa thanh toán
+        const qOrders = query(collection(db, "orders"), where("trangThai", "!=", "da_thanh_toan"), orderBy("thoiGian", "desc"));
         
         onSnapshot(qOrders, snap => {
             const listCho = document.getElementById('list-cho'); 
@@ -113,26 +113,23 @@
                 const d = docOrder.data();
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 
-                const statusBadge = d.trangThai === 'cho_xac_nhan' 
-                    ? '<span class="badge bg-danger badge-status">Mới</span>' 
-                    : '<span class="badge bg-success badge-status">Chờ TT</span>';
+                // Nếu đơn cũ không có trường trangThai, mặc định là cho_xac_nhan
+                const currentStatus = d.trangThai || 'cho_xac_nhan';
 
                 const html = `<div class="order-box">
-                    <div class="d-flex justify-content-between">
-                        <div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>
-                        ${statusBadge}
-                    </div>
+                    <div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>
                     <div class="small my-1">${items}</div>
                     <div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>
-                    <button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" 
-                    onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>
+                    <button class="btn btn-sm w-100 mt-2 fw-bold ${currentStatus==='da_xong'?'btn-success':'btn-primary'}" 
+                    onclick="${currentStatus==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${currentStatus==='da_xong'?'THANH TOÁN':'XONG'}</button>
                 </div>`;
-                d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
+                currentStatus === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
         
+        // --- THANH TOÁN (LƯU LỊCH SỬ) ---
         window.pay = async (id) => {
             if(!confirm(`Thanh toán đơn này?`)) return;
             
@@ -140,6 +137,7 @@
             const orderSnap = await getDoc(orderRef);
             const data = orderSnap.data();
 
+            // 1. Cập nhật doanh thu trong ngày
             const reportRef = doc(db, "REPORTS", getTodayStr());
             let up = { all_total: increment(data.tongTien) };
             data.danhSachMon.forEach(m => {
@@ -147,9 +145,12 @@
                 up[`${m.name}_amt`] = increment(m.price * m.qty);
             });
             await setDoc(reportRef, up, { merge: true });
+
+            // 2. Chuyển trạng thái sang "da_thanh_toan" để lưu lịch sử
             await updateDoc(orderRef, { trangThai: "da_thanh_toan" });
         };
 
+        // --- LỊCH SỬ ĐƠN HÀNG ---
         const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
         onSnapshot(qHistory, snap => {
             const listHistory = document.getElementById('list-history');
@@ -165,6 +166,7 @@
             });
         });
 
+        // --- DOANH THU ---
         onSnapshot(doc(db, "REPORTS", today), dSnap => {
             const table = document.getElementById('revenue-table');
             if(!dSnap.exists()) { table.innerHTML = "<tr><td colspan='3'>Chưa có dữ liệu</td></tr>"; return; }
