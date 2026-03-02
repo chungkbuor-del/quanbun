@@ -125,7 +125,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, getDoc, getDocs, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // Firebase Config
         const firebaseConfig = {
@@ -140,7 +140,6 @@
         const db = getFirestore(app);
 
         let menuItems = [];
-        const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
         const now = new Date();
         document.getElementById('h-start').valueAsDate = now;
         document.getElementById('h-end').valueAsDate = now;
@@ -207,50 +206,30 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- ON SNAPSHOT SỬA LỖI ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); 
             const listXong = document.getElementById('list-xong');
-            
-            listCho.innerHTML = ""; 
-            listXong.innerHTML = "";
-            
+            listCho.innerHTML = ""; listXong.innerHTML = "";
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
-                
-                if (!d.danhSachMon || !Array.isArray(d.danhSachMon)) return;
-
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
-                
-                let html = `<div class="order-box">`;
-                html += `<div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>`;
-                html += `<div class="small my-1">${items}</div>`;
-                html += `<div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>`;
-                
+                let html = `<div class="order-box"><div class="fw-bold text-danger fs-6">👤 ${d.khach}</div><div class="small my-1">${items}</div><div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>`;
                 if (d.trangThai === 'dang_cho') {
-                    html += `<div class="row g-1 mt-2">
-                                <div class="col-8"><button class="btn btn-sm btn-primary w-100 fw-bold" onclick="done('${docOrder.id}')">XONG</button></div>
-                                <div class="col-4"><button class="btn btn-sm btn-outline-danger w-100" onclick="xoaDonHang('${docOrder.id}')">Hủy</button></div>
-                                <div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món</button></div>
-                             </div>`;
+                    html += `<div class="row g-1 mt-2"><div class="col-8"><button class="btn btn-sm btn-primary w-100 fw-bold" onclick="done('${docOrder.id}')">XONG</button></div><div class="col-4"><button class="btn btn-sm btn-outline-danger w-100" onclick="xoaDonHang('${docOrder.id}')">Hủy</button></div><div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món</button></div></div>`;
                 } else if (d.trangThai === 'da_xong') {
                     html += `<button class="btn btn-sm btn-success w-100 mt-2 fw-bold" onclick="pay('${docOrder.id}')">THANH TOÁN</button>`;
                 }
-                
                 html += `</div>`;
-                
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
 
-        // --- NÚT BẤM THANH TOÁN ---
         window.pay = async (id) => {
             const { value: method } = await Swal.fire({
                 title: 'Chọn hình thức thanh toán',
-                icon: 'question',
                 showDenyButton: true,
                 showCancelButton: true,
                 confirmButtonText: '💵 Tiền mặt',
@@ -258,37 +237,27 @@
                 cancelButtonText: 'Đóng',
                 confirmButtonColor: '#ffc107', 
                 denyButtonColor: '#0d6efd',
-                customClass: {
-                    confirmButton: 'text-dark fw-bold',
-                    denyButton: 'fw-bold'
-                }
             });
-
             let phuongThuc = "";
             if (method === true) phuongThuc = "Tiền mặt";
             else if (method === false) phuongThuc = "Chuyển khoản";
             else return;
-
-            if(!confirm(`Xác nhận thanh toán [${phuongThuc}] cho đơn này?`)) return;
-
-            await updateDoc(doc(db, "orders", id), { 
-                trangThai: "da_thanh_toan",
-                phuongThucTT: phuongThuc 
-            });
+            if(!confirm(`Xác nhận thanh toán [${phuongThuc}]?`)) return;
+            await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan", phuongThucTT: phuongThuc });
         };
 
-        // --- FIX: TÌM LỊCH SỬ THEO NGÀY ---
+        // --- FIXED: LOAD HISTORY ---
         window.loadHistory = async () => {
             const startVal = document.getElementById('h-start').value; 
             const endVal = document.getElementById('h-end').value;
             if(!startVal || !endVal) return;
-
+            
+            // XỬ LÝ GIỜ CHÍNH XÁC: TỪ 00:00:00 ĐẾN 23:59:59
             const startDate = new Date(startVal); startDate.setHours(0, 0, 0, 0);
             const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999);
             
             const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
             
-            // Dùng getDocs thay vì onSnapshot để load một lần
             const snap = await getDocs(qHistory);
             const listHistory = document.getElementById('list-history'); 
             listHistory.innerHTML = "";
@@ -296,6 +265,7 @@
             snap.forEach(docOrder => {
                 const d = docOrder.data(); 
                 const orderDate = d.thoiGian.toDate();
+                // SO SÁNH GIỜ CHÍNH XÁC
                 if(orderDate >= startDate && orderDate <= endDate) {
                     let itemsTable = `<table class="table table-sm table-bordered mt-1 small"><tbody>`;
                     d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
@@ -339,7 +309,6 @@
             document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
         };
 
-        // --- CÁC HÀM HỖ TRỢ ---
         let currentEditingOrderId = null;
         window.openEditModal = async (orderId) => {
             currentEditingOrderId = orderId;
@@ -384,8 +353,6 @@
             await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
             alert("✅ Đã xóa!");
         };
-        // Nhập các thư viện cần thiết từ getDocs
-        import { getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
