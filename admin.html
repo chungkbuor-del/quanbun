@@ -207,13 +207,20 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- CẬP NHẬT GIAO DIỆN CHÍNH THÊM NÚT SỬA/HỦY ---
+        // --- CẬP NHẬT ON SNAPSHOT SỬA LỖI NÚT BẤM ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
-            const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
-            listCho.innerHTML = ""; listXong.innerHTML = "";
+            const listCho = document.getElementById('list-cho'); 
+            const listXong = document.getElementById('list-xong');
+            
+            listCho.innerHTML = ""; 
+            listXong.innerHTML = "";
+            
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
+                
+                if (!d.danhSachMon || !Array.isArray(d.danhSachMon)) return;
+
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 
                 let html = `<div class="order-box">`;
@@ -232,8 +239,11 @@
                 }
                 
                 html += `</div>`;
+                
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
+        }, (error) => {
+            console.error("Lỗi Firestore: ", error);
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
