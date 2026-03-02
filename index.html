@@ -3,55 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đặt Món - Quán</title>
+    <title>Quản Lý Đơn Hàng & Doanh Thu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-bottom: 160px; font-family: sans-serif; }
-        .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
-        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        
-        /* Style mới cho tiêu đề nhóm */
-        .category-title { 
-            background: #dc3545; 
-            color: white; 
-            padding: 5px 15px; 
-            border-radius: 20px; 
-            display: inline-block; 
-            margin-top: 20px; 
-            margin-bottom: 10px; 
-            font-weight: bold; 
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-        .dish-name { white-space: pre-line; line-height: 1.2; display: block; }
+        body { background: #f4f7f6; font-family: sans-serif; }
+        .stats-card { border: none; border-radius: 15px; transition: 0.3s; }
+        .order-card { border-left: 5px solid #dc3545; margin-bottom: 15px; border-radius: 10px; }
+        .order-done { border-left: 5px solid #198754; opacity: 0.8; background: #e9ecef; }
+        .badge-cash { background: #ffc107; color: #000; }
+        .badge-transfer { background: #0d6efd; color: #fff; }
+        .sticky-top-stats { position: sticky; top: 10px; z-index: 100; }
     </style>
 </head>
 <body>
-    <div class="container py-3">
-        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN</h3>
-        
-        <div class="card p-3 mb-4 border-0 shadow-sm">
-            <label class="fw-bold mb-1 small text-muted text-uppercase">Tên của bạn:</label>
-            <input type="text" id="ten-khach" class="form-control form-control-lg border-danger shadow-none" placeholder="Nhập tên tại đây...">
+    <div class="container py-4">
+        <h2 class="text-center fw-bold mb-4">📊 QUẢN LÝ QUÁN</h2>
+
+        <div class="row g-3 mb-4 sticky-top-stats">
+            <div class="col-6 col-md-4">
+                <div class="card stats-card bg-white shadow-sm p-3 text-center">
+                    <small class="text-muted">💵 TIỀN MẶT</small>
+                    <h4 id="revenue-cash" class="fw-bold text-warning mb-0">0đ</h4>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="card stats-card bg-white shadow-sm p-3 text-center">
+                    <small class="text-muted">💳 CHUYỂN KHOẢN</small>
+                    <h4 id="revenue-transfer" class="fw-bold text-primary mb-0">0đ</h4>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card stats-card bg-danger text-white shadow-sm p-3 text-center">
+                    <small>🚀 TỔNG DOANH THU</small>
+                    <h4 id="revenue-total" class="fw-bold mb-0">0đ</h4>
+                </div>
+            </div>
         </div>
 
-        <div id="display-menu">
-            <div class="text-center p-5 text-muted">Đang tải danh sách món...</div>
-        </div>
+        <hr>
 
-        <div class="cart-bar">
-            <div id="cart-details" class="mb-3" style="max-height: 120px; overflow-y: auto;"></div>
-            <div class="d-flex justify-content-between align-items-center border-top pt-2">
-                <div><small class="text-muted">Tổng tiền:</small><h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4></div>
-                <button class="btn btn-danger btn-lg fw-bold px-4" onclick="guiDonHang()">GỬI ĐƠN</button>
+        <div class="row">
+            <div class="col-md-7">
+                <h5 class="fw-bold mb-3">🔔 Đơn mới nhận</h5>
+                <div id="list-orders-new"></div>
+            </div>
+            <div class="col-md-5">
+                <h5 class="fw-bold mb-3 text-muted">✅ Đơn đã xong</h5>
+                <div id="list-orders-done"></div>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -64,92 +69,68 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let cart = {};
+        // LẮNG NGHE DỮ LIỆU ĐƠN HÀNG
+        const q = query(collection(db, "orders"), orderBy("thoiGian", "desc"));
+        onSnapshot(q, (snap) => {
+            const newDiv = document.getElementById('list-orders-new');
+            const doneDiv = document.getElementById('list-orders-done');
+            newDiv.innerHTML = "";
+            doneDiv.innerHTML = "";
 
-        // LẮNG NGHE MENU VÀ PHÂN NHÓM
-        onSnapshot(collection(db, "MENU"), (snap) => {
-            const menuDiv = document.getElementById('display-menu');
-            menuDiv.innerHTML = "";
-            
-            let grouped = {};
+            let tienMat = 0;
+            let chuyenKhoan = 0;
 
-            // Bước 1: Gom nhóm món ăn theo thuộc tính 'category'
             snap.forEach(d => {
-                const item = d.data();
-                const cat = item.category || "KHÁC"; // Nếu không có nhóm thì cho vào mục KHÁC
-                if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(item);
-            });
+                const order = d.data();
+                const id = d.id;
+                const itemsHtml = order.danhSachMon.map(i => `<li>${i.name} x${i.qty}</li>`).join("");
 
-            // Bước 2: Hiển thị ra màn hình
-            // Sắp xếp các nhóm (ví dụ Bún hiện trước, Nước hiện sau)
-            const categories = Object.keys(grouped).sort(); 
-
-            categories.forEach(cat => {
-                // In tiêu đề nhóm
-                menuDiv.innerHTML += `<div class="category-title">${cat}</div>`;
-                
-                // In các món trong nhóm đó
-                grouped[cat].forEach(item => {
-                    menuDiv.innerHTML += `
-                        <div class="menu-item d-flex justify-content-between align-items-center">
-                            <div style="flex: 1; padding-right: 10px;">
-                                <div class="fw-bold fs-6 dish-name">${item.name}</div>
-                                <div class="text-danger fw-bold small">${item.price.toLocaleString()}đ</div>
+                if (order.trangThai === "cho_lam") {
+                    newDiv.innerHTML += `
+                        <div class="card order-card shadow-sm p-3 bg-white">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="fw-bold text-danger">Khách: ${order.khach}</h6>
+                                <small class="text-muted">${order.thoiGian.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
                             </div>
-                            <button class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm" 
-                                    onclick="updateCart('${item.name.replace(/\n/g, " ")}', ${item.price}, 1)">
-                                + Thêm
-                            </button>
+                            <ul class="small mb-2">${itemsHtml}</ul>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">${order.tongTien.toLocaleString()}đ</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-warning btn-sm" onclick="xacNhanDon('${id}', 'Tiền mặt')">💵 Tiền mặt</button>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="xacNhanDon('${id}', 'Chuyển khoản')">💳 CK</button>
+                                </div>
+                            </div>
                         </div>`;
-                });
+                } else {
+                    // Đơn đã xong -> Cộng vào doanh thu
+                    if (order.phuongThucTT === "Tiền mặt") tienMat += order.tongTien;
+                    if (order.phuongThucTT === "Chuyển khoản") chuyenKhoan += order.tongTien;
+
+                    doneDiv.innerHTML += `
+                        <div class="card order-card order-done p-2 mb-2 small shadow-none">
+                            <div class="d-flex justify-content-between">
+                                <span><b>${order.khach}</b> - ${order.tongTien.toLocaleString()}đ</span>
+                                <span class="badge ${order.phuongThucTT === 'Tiền mặt' ? 'badge-cash' : 'badge-transfer'}">${order.phuongThucTT}</span>
+                            </div>
+                        </div>`;
+                }
             });
+
+            // Cập nhật con số Doanh thu
+            document.getElementById('revenue-cash').innerText = tienMat.toLocaleString() + "đ";
+            document.getElementById('revenue-transfer').innerText = chuyenKhoan.toLocaleString() + "đ";
+            document.getElementById('revenue-total').innerText = (tienMat + chuyenKhoan).toLocaleString() + "đ";
         });
 
-        window.updateCart = (name, price, change) => {
-            if (!cart[name]) cart[name] = { name, price, qty: 0 };
-            cart[name].qty += change;
-            if (cart[name].qty <= 0) delete cart[name];
-            renderUI();
-        };
-
-        function renderUI() {
-            const list = document.getElementById('cart-details');
-            list.innerHTML = "";
-            let total = 0;
-            Object.values(cart).forEach(item => {
-                total += item.price * item.qty;
-                list.innerHTML += `
-                    <div class="d-flex justify-content-between align-items-center mb-2 bg-light p-2 rounded border">
-                        <span class="fw-bold small" style="white-space: pre-line;">${item.name}</span>
-                        <div class="d-flex align-items-center">
-                            <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, -1)">-</button>
-                            <b class="mx-3 fs-6">${item.qty}</b>
-                            <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, 1)">+</button>
-                        </div>
-                    </div>`;
-            });
-            document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
-        }
-
-        window.guiDonHang = async () => {
-            const ten = document.getElementById('ten-khach').value.trim();
-            const items = Object.values(cart);
-            if (!ten) return alert("Vui lòng nhập tên của bạn!");
-            if (items.length === 0) return alert("Bạn chưa chọn món!");
-
+        // HÀM XỬ LÝ KHI ẤN THANH TOÁN
+        window.xacNhanDon = async (id, loai) => {
+            if(!confirm(`Xác nhận khách trả bằng ${loai}?`)) return;
             try {
-                await addDoc(collection(db, "orders"), {
-                    khach: ten,
-                    danhSachMon: items,
-                    tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
-                    trangThai: "cho_lam",
-                    thoiGian: new Date()
+                await updateDoc(doc(db, "orders", id), {
+                    trangThai: "da_xong",
+                    phuongThucTT: loai
                 });
-                alert("Đã gửi đơn thành công!");
-                cart = {}; renderUI();
-                document.getElementById('ten-khach').value = "";
-            } catch(e) { alert("Lỗi gửi đơn!"); }
+            } catch (e) { alert("Lỗi cập nhật!"); }
         };
     </script>
 </body>
