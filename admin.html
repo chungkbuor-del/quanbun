@@ -207,6 +207,7 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
+        // --- CẬP NHẬT GIAO DIỆN CHÍNH THÊM NÚT SỬA/HỦY ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
             listCho.innerHTML = ""; listXong.innerHTML = "";
@@ -214,14 +215,30 @@
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
-                const html = `<div class="order-box">${d.trangThai === 'dang_cho' ? `<span class="fw-bold text-danger fs-6" style="cursor:pointer" onclick="openEditModal('${docOrder.id}')">👤 ${d.khach} ✏️</span>` : `<span class="fw-bold text-danger fs-6">👤 ${d.khach}</span>`}<div class="small my-1">${items}</div><div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div><button class="btn btn-sm w-100 mt-2 fw-bold ${d.trangThai==='da_xong'?'btn-success':'btn-primary'}" onclick="${d.trangThai==='da_xong' ? `pay('${docOrder.id}')` : `done('${docOrder.id}')`}">${d.trangThai==='da_xong'?'THANH TOÁN':'XONG'}</button>${d.trangThai === 'dang_cho' ? `<button class="btn btn-sm btn-outline-danger w-100 mt-1" onclick="xoaDonHang('${docOrder.id}')">Hủy đơn</button>` : ''}</div>`;
+                
+                let html = `<div class="order-box">`;
+                html += `<div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>`;
+                html += `<div class="small my-1">${items}</div>`;
+                html += `<div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>`;
+                
+                if (d.trangThai === 'dang_cho') {
+                    html += `<div class="row g-1 mt-2">
+                                <div class="col-8"><button class="btn btn-sm btn-primary w-100 fw-bold" onclick="done('${docOrder.id}')">XONG</button></div>
+                                <div class="col-4"><button class="btn btn-sm btn-outline-danger w-100" onclick="xoaDonHang('${docOrder.id}')">Hủy</button></div>
+                                <div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món</button></div>
+                             </div>`;
+                } else if (d.trangThai === 'da_xong') {
+                    html += `<button class="btn btn-sm btn-success w-100 mt-2 fw-bold" onclick="pay('${docOrder.id}')">THANH TOÁN</button>`;
+                }
+                
+                html += `</div>`;
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
 
-        // --- CẬP NHẬT HÀM THANH TOÁN DÙNG NÚT BẤM SWEETALERT ---
+        // --- HÀM THANH TOÁN DÙNG NÚT BẤM SWEETALERT ---
         window.pay = async (id) => {
             const { value: method } = await Swal.fire({
                 title: 'Chọn hình thức thanh toán',
@@ -289,7 +306,7 @@
             });
         };
 
-        // --- CẬP NHẬT HÀM BÁO CÁO DOANH THU CHÍNH XÁC ---
+        // --- HÀM BÁO CÁO DOANH THU CHÍNH XÁC ---
         window.loadReport = () => {
             const startVal = document.getElementById('r-start').value; 
             const endVal = document.getElementById('r-end').value;
