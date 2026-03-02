@@ -19,7 +19,7 @@
         .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
-        .cat-title { background: #eee; padding: 5px 10px; font-weight: bold; border-radius: 5px; margin-top: 10px; color: #555; font-size: 0.9rem; }
+        .cat-title { background: #eee; padding: 5px 10px; font-weight: bold; border-radius: 5px; margin-top: 15px; color: #555; font-size: 0.9rem; width: 100%; }
         .revenue-detail { font-size: 1.1rem; margin-bottom: 5px; }
     </style>
 </head>
@@ -147,7 +147,7 @@
         const notificationSound = document.getElementById('notification-sound');
 
         const USERNAME = "admin";
-        const PASSWORD = "ab321";
+        const PASSWORD = "123";
 
         const mainContent = document.getElementById('main-content');
         window.checkLogin = async () => {
@@ -193,10 +193,12 @@
             }
         };
 
+        // --- SỬA LỖI HIỂN THỊ MENU TẠI ĐÂY ---
         onSnapshot(collection(db, "MENU"), snap => {
             const list = document.getElementById('menu-list-admin'); 
             list.innerHTML = ""; menuItems = [];
             let grouped = {};
+            
             snap.forEach(d => { 
                 const data = d.data();
                 const item = {id: d.id, ...data};
@@ -204,8 +206,10 @@
                 if(!grouped[data.category]) grouped[data.category] = [];
                 grouped[data.category].push(item);
             });
+            
+            // Duyệt qua từng nhóm để hiển thị
             for(let cat in grouped) {
-                list.innerHTML += `<div class="col-12 cat-title">${cat}</div>`;
+                list.innerHTML += `<div class="cat-title">${cat}</div>`;
                 grouped[cat].forEach(m => {
                     list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${m.name} (${m.price.toLocaleString()}đ) <b class="text-danger ms-1" onclick="xoaMon('${m.id}')" style="cursor:pointer">×</b></span></div>`;
                 });
@@ -238,12 +242,10 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- THEO DÕI ĐƠN HÀNG VÀ PHÁT ÂM THANH ---
         let currentOrders = new Set();
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); 
             const listXong = document.getElementById('list-xong');
-            
             listCho.innerHTML = ""; listXong.innerHTML = "";
             let newOrdersSet = new Set();
 
@@ -252,7 +254,6 @@
                 if (d.trangThai === "da_thanh_toan") return;
                 
                 newOrdersSet.add(docOrder.id);
-                // Nếu là đơn mới chưa có trong set cũ và đang chờ -> phát âm thanh
                 if (!currentOrders.has(docOrder.id) && d.trangThai === "dang_cho") {
                     notificationSound.play().catch(e => console.log("Cần tương tác để phát âm thanh"));
                 }
@@ -270,7 +271,7 @@
                 html += `</div>`;
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
-            currentOrders = newOrdersSet; // Cập nhật set đơn hàng hiện tại
+            currentOrders = newOrdersSet;
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
@@ -384,4 +385,3 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
