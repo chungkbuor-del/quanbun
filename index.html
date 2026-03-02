@@ -10,20 +10,7 @@
         .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
         .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
         .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        
-        /* Style mới cho tiêu đề nhóm */
-        .category-title { 
-            background: #dc3545; 
-            color: white; 
-            padding: 5px 15px; 
-            border-radius: 20px; 
-            display: inline-block; 
-            margin-top: 20px; 
-            margin-bottom: 10px; 
-            font-weight: bold; 
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
+        .category-title { background: #dc3545; color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; margin-top: 20px; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; }
         .dish-name { white-space: pre-line; line-height: 1.2; display: block; }
     </style>
 </head>
@@ -51,7 +38,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
@@ -66,30 +53,20 @@
 
         let cart = {};
 
-        // LẮNG NGHE MENU VÀ PHÂN NHÓM
+        // LẮNG NGHE MENU
         onSnapshot(collection(db, "MENU"), (snap) => {
             const menuDiv = document.getElementById('display-menu');
             menuDiv.innerHTML = "";
-            
             let grouped = {};
-
-            // Bước 1: Gom nhóm món ăn theo thuộc tính 'category'
             snap.forEach(d => {
                 const item = d.data();
-                const cat = item.category || "KHÁC"; // Nếu không có nhóm thì cho vào mục KHÁC
+                const cat = item.category || "KHÁC";
                 if (!grouped[cat]) grouped[cat] = [];
                 grouped[cat].push(item);
             });
-
-            // Bước 2: Hiển thị ra màn hình
-            // Sắp xếp các nhóm (ví dụ Bún hiện trước, Nước hiện sau)
             const categories = Object.keys(grouped).sort(); 
-
             categories.forEach(cat => {
-                // In tiêu đề nhóm
                 menuDiv.innerHTML += `<div class="category-title">${cat}</div>`;
-                
-                // In các món trong nhóm đó
                 grouped[cat].forEach(item => {
                     menuDiv.innerHTML += `
                         <div class="menu-item d-flex justify-content-between align-items-center">
@@ -132,6 +109,7 @@
             document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
         }
 
+        // --- ĐỒNG BỘ GỬI ĐƠN ---
         window.guiDonHang = async () => {
             const ten = document.getElementById('ten-khach').value.trim();
             const items = Object.values(cart);
@@ -143,8 +121,8 @@
                     khach: ten,
                     danhSachMon: items,
                     tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
-                    trangThai: "cho_lam",
-                    thoiGian: new Date()
+                    trangThai: "dang_cho", // ĐỒNG BỘ: Giống app quản lý
+                    thoiGian: serverTimestamp() // ĐỒNG BỘ: Format chuẩn thời gian Firestore
                 });
                 alert("Đã gửi đơn thành công!");
                 cart = {}; renderUI();
@@ -154,4 +132,3 @@
     </script>
 </body>
 </html>
-
