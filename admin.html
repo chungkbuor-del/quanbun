@@ -289,30 +289,49 @@
             });
         };
 
+        // --- CẬP NHẬT HÀM BÁO CÁO DOANH THU CHÍNH XÁC ---
         window.loadReport = () => {
-            const startVal = document.getElementById('r-start').value; const endVal = document.getElementById('r-end').value;
+            const startVal = document.getElementById('r-start').value; 
+            const endVal = document.getElementById('r-end').value;
+            
             if(!startVal || !endVal) return;
-            const startDate = new Date(startVal); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999);
+
+            // Chuyển đổi ngày tháng chính xác
+            const startDate = new Date(startVal);
+            startDate.setHours(0, 0, 0, 0); // Bắt đầu từ 00:00:00
+
+            const endDate = new Date(endVal); 
+            endDate.setHours(23, 59, 59, 999); // Kết thúc vào 23:59:59
+
+            // Lọc các đơn hàng đã thanh toán
             const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            
             onSnapshot(qHistory, snap => {
                 const table = document.getElementById('revenue-table'); 
                 let reportObj = { all_total: 0, cash_total: 0, transfer_total: 0 };
                 
                 snap.forEach(docOrder => {
-                    const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
+                    const d = docOrder.data(); 
+                    // Chuyển đổi timestamp của Firebase sang Date của JS
+                    const orderDate = d.thoiGian.toDate();
+
+                    // Kiểm tra xem đơn hàng có nằm trong khoảng thời gian đã chọn không
                     if(orderDate >= startDate && orderDate <= endDate) {
                         reportObj.all_total += d.tongTien;
+                        
                         if(d.phuongThucTT === "Tiền mặt") reportObj.cash_total += d.tongTien;
-                        if(d.phuongThucTT === "Chuyển khoản") reportObj.transfer_total += d.tongTien;
+                        else if(d.phuongThucTT === "Chuyển khoản") reportObj.transfer_total += d.tongTien;
 
                         d.danhSachMon.forEach(m => {
                             if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
                             if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
-                            reportObj[m.name+"_qty"] += m.qty; reportObj[m.name+"_amt"] += (m.price * m.qty);
+                            reportObj[m.name+"_qty"] += m.qty; 
+                            reportObj[m.name+"_amt"] += (m.price * m.qty);
                         });
                     }
                 });
                 
+                // Hiển thị kết quả lên bảng
                 let html = "";
                 Object.keys(reportObj).forEach(k => { 
                     if(k.endsWith("_qty")) { 
