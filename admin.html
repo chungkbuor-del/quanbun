@@ -250,7 +250,7 @@
         window.loadHistory = async () => {
             const startVal = document.getElementById('h-start').value; 
             const endVal = document.getElementById('h-end').value;
-            if(!startVal || !endVal) return;
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày!");
             
             // XỬ LÝ GIỜ CHÍNH XÁC: TỪ 00:00:00 ĐẾN 23:59:59
             const startDate = new Date(startVal); startDate.setHours(0, 0, 0, 0);
