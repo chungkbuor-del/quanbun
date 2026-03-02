@@ -127,7 +127,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Firebase Config của bạn
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
             authDomain: "quanbun-6cf3b.firebaseapp.com",
@@ -207,7 +207,6 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- CẬP NHẬT ON SNAPSHOT SỬA LỖI NÚT BẤM ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); 
             const listXong = document.getElementById('list-xong');
@@ -248,7 +247,6 @@
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
 
-        // --- HÀM THANH TOÁN DÙNG NÚT BẤM SWEETALERT ---
         window.pay = async (id) => {
             const { value: method } = await Swal.fire({
                 title: 'Chọn hình thức thanh toán',
@@ -296,21 +294,45 @@
             }
         };
 
+        // --- HÀM TÌM KIẾM LỊCH SỬ SỬA LỖI GIỜ GIẤC ---
         window.loadHistory = () => {
-            const startVal = document.getElementById('h-start').value; const endVal = document.getElementById('h-end').value;
-            if(!startVal || !endVal) return;
-            const startDate = new Date(startVal); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999);
-            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
+            const startVal = document.getElementById('h-start').value; 
+            const endVal = document.getElementById('h-end').value;
+            
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày bắt đầu và kết thúc!");
+
+            // Chuyển đổi ngày tháng chính xác
+            const startDate = new Date(startVal);
+            startDate.setHours(0, 0, 0, 0); // Bắt đầu từ 00:00:00
+
+            const endDate = new Date(endVal); 
+            endDate.setHours(23, 59, 59, 999); // Kết thúc vào 23:59:59
+
+            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            
             onSnapshot(qHistory, snap => {
-                const listHistory = document.getElementById('list-history'); listHistory.innerHTML = "";
+                const listHistory = document.getElementById('list-history'); 
+                listHistory.innerHTML = "";
+                
                 snap.forEach(docOrder => {
-                    const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
+                    const d = docOrder.data(); 
+                    const orderDate = d.thoiGian.toDate();
+                    
+                    // Kiểm tra xem đơn hàng có nằm trong khoảng thời gian đã chọn không
                     if(orderDate >= startDate && orderDate <= endDate) {
                         let itemsTable = `<table class="table table-sm table-bordered mt-1 small"><tbody>`;
                         d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
                         itemsTable += `</tbody></table>`;
                         const ptLabel = d.phuongThucTT ? `<span class="badge bg-info text-dark">${d.phuongThucTT}</span>` : '';
-                        listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d"><div class="d-flex justify-content-between"><b>👤 ${d.khach} ${ptLabel}</b><span class="small text-muted">${formatDate(orderDate)}</span></div>${itemsTable}<div class="text-end fw-bold text-success">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div></div>`;
+                        
+                        listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d">
+                            <div class="d-flex justify-content-between">
+                                <b>👤 ${d.khach} ${ptLabel}</b>
+                                <span class="small text-muted">${orderDate.toLocaleString('vi-VN')}</span>
+                            </div>
+                            ${itemsTable}
+                            <div class="text-end fw-bold text-success">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div>
+                        </div>`;
                     }
                 });
             });
@@ -321,7 +343,7 @@
             const startVal = document.getElementById('r-start').value; 
             const endVal = document.getElementById('r-end').value;
             
-            if(!startVal || !endVal) return;
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày bắt đầu và kết thúc!");
 
             // Chuyển đổi ngày tháng chính xác
             const startDate = new Date(startVal);
