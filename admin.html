@@ -127,7 +127,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, increment, where, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Firebase Config của bạn
         const firebaseConfig = {
             apiKey: "AIzaSyCOasks_plua7yYBVgXIN3dKNIBS3WhO3Y",
             authDomain: "quanbun-6cf3b.firebaseapp.com",
@@ -140,7 +139,6 @@
         const db = getFirestore(app);
 
         let menuItems = [];
-        const formatDate = (date) => date.toLocaleDateString('vi-VN').replace(/\//g, '-');
         const now = new Date();
         document.getElementById('h-start').valueAsDate = now;
         document.getElementById('h-end').valueAsDate = now;
@@ -207,7 +205,6 @@
             document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // --- CẬP NHẬT ON SNAPSHOT SỬA LỖI NÚT BẤM ---
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); 
             const listXong = document.getElementById('list-xong');
@@ -218,7 +215,6 @@
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
-                
                 if (!d.danhSachMon || !Array.isArray(d.danhSachMon)) return;
 
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
@@ -242,13 +238,10 @@
                 
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
             });
-        }, (error) => {
-            console.error("Lỗi Firestore: ", error);
         });
 
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
 
-        // --- HÀM THANH TOÁN DÙNG NÚT BẤM SWEETALERT ---
         window.pay = async (id) => {
             const { value: method } = await Swal.fire({
                 title: 'Chọn hình thức thanh toán',
@@ -260,117 +253,95 @@
                 cancelButtonText: 'Đóng',
                 confirmButtonColor: '#ffc107', 
                 denyButtonColor: '#0d6efd',
-                customClass: {
-                    confirmButton: 'text-dark fw-bold',
-                    denyButton: 'fw-bold'
-                }
             });
 
             let phuongThuc = "";
-            if (method === true) {
-                phuongThuc = "Tiền mặt";
-            } else if (method === false) {
-                phuongThuc = "Chuyển khoản";
-            } else {
-                return;
-            }
+            if (method === true) phuongThuc = "Tiền mặt";
+            else if (method === false) phuongThuc = "Chuyển khoản";
+            else return;
 
-            if(!confirm(`Xác nhận thanh toán [${phuongThuc}] cho đơn này?`)) return;
+            if(!confirm(`Xác nhận thanh toán [${phuongThuc}]?`)) return;
 
-            try {
-                await updateDoc(doc(db, "orders", id), { 
-                    trangThai: "da_thanh_toan",
-                    phuongThucTT: phuongThuc 
-                });
-                
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: `Đã xong: ${phuongThuc}`,
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-            } catch (e) { 
-                Swal.fire('Lỗi!', 'Không thể cập nhật đơn hàng', 'error');
-            }
+            await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan", phuongThucTT: phuongThuc });
         };
 
-        window.loadHistory = () => {
-            const startVal = document.getElementById('h-start').value; const endVal = document.getElementById('h-end').value;
+        // --- FIXED: HÀM TÌM KIẾM LỊCH SỬ CHÍNH XÁC ---
+        window.loadHistory = async () => {
+            const startVal = document.getElementById('h-start').value; 
+            const endVal = document.getElementById('h-end').value;
             if(!startVal || !endVal) return;
-            const startDate = new Date(startVal); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999);
+            
+            const listHistory = document.getElementById('list-history');
+            listHistory.innerHTML = "<div class='text-center'>Đang tìm...</div>";
+
+            // Lấy tất cả đơn đã thanh toán
             const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
-            onSnapshot(qHistory, snap => {
-                const listHistory = document.getElementById('list-history'); listHistory.innerHTML = "";
-                snap.forEach(docOrder => {
-                    const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
-                    if(orderDate >= startDate && orderDate <= endDate) {
-                        let itemsTable = `<table class="table table-sm table-bordered mt-1 small"><tbody>`;
-                        d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
-                        itemsTable += `</tbody></table>`;
-                        const ptLabel = d.phuongThucTT ? `<span class="badge bg-info text-dark">${d.phuongThucTT}</span>` : '';
-                        listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d"><div class="d-flex justify-content-between"><b>👤 ${d.khach} ${ptLabel}</b><span class="small text-muted">${formatDate(orderDate)}</span></div>${itemsTable}<div class="text-end fw-bold text-success">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div></div>`;
-                    }
-                });
+            const snap = await getDocs(qHistory);
+            
+            listHistory.innerHTML = "";
+            let count = 0;
+
+            snap.forEach(docOrder => {
+                const d = docOrder.data();
+                if (!d.thoiGian) return;
+                
+                // Chuyển timestamp về chuỗi yyyy-mm-dd để so sánh chính xác ngày
+                const orderDateObj = d.thoiGian.toDate();
+                const orderDateStr = orderDateObj.toISOString().split('T')[0];
+
+                if(orderDateStr >= startVal && orderDateStr <= endVal) {
+                    count++;
+                    let itemsTable = `<table class="table table-sm table-bordered mt-1 small"><tbody>`;
+                    d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
+                    itemsTable += `</tbody></table>`;
+                    const ptLabel = d.phuongThucTT ? `<span class="badge bg-info text-dark">${d.phuongThucTT}</span>` : '';
+                    listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d"><div class="d-flex justify-content-between"><b>👤 ${d.khach} ${ptLabel}</b><span class="small text-muted">${orderDateObj.toLocaleString('vi-VN')}</span></div>${itemsTable}<div class="text-end fw-bold text-success">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div></div>`;
+                }
             });
+
+            if (count === 0) listHistory.innerHTML = "<div class='text-center text-muted'>Không có đơn hàng</div>";
         };
 
-        // --- HÀM BÁO CÁO DOANH THU CHÍNH XÁC ---
-        window.loadReport = () => {
+        // --- FIXED: HÀM BÁO CÁO DOANH THU CHÍNH XÁC ---
+        window.loadReport = async () => {
             const startVal = document.getElementById('r-start').value; 
             const endVal = document.getElementById('r-end').value;
-            
             if(!startVal || !endVal) return;
-
-            // Chuyển đổi ngày tháng chính xác
-            const startDate = new Date(startVal);
-            startDate.setHours(0, 0, 0, 0); // Bắt đầu từ 00:00:00
-
-            const endDate = new Date(endVal); 
-            endDate.setHours(23, 59, 59, 999); // Kết thúc vào 23:59:59
-
-            // Lọc các đơn hàng đã thanh toán
-            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
             
-            onSnapshot(qHistory, snap => {
-                const table = document.getElementById('revenue-table'); 
-                let reportObj = { all_total: 0, cash_total: 0, transfer_total: 0 };
+            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            const snap = await getDocs(qHistory);
+            
+            let reportObj = { all_total: 0, cash_total: 0, transfer_total: 0 };
+            
+            snap.forEach(docOrder => {
+                const d = docOrder.data();
+                if (!d.thoiGian) return;
                 
-                snap.forEach(docOrder => {
-                    const d = docOrder.data(); 
-                    // Chuyển đổi timestamp của Firebase sang Date của JS
-                    const orderDate = d.thoiGian.toDate();
+                const orderDateStr = d.thoiGian.toDate().toISOString().split('T')[0];
 
-                    // Kiểm tra xem đơn hàng có nằm trong khoảng thời gian đã chọn không
-                    if(orderDate >= startDate && orderDate <= endDate) {
-                        reportObj.all_total += d.tongTien;
-                        
-                        if(d.phuongThucTT === "Tiền mặt") reportObj.cash_total += d.tongTien;
-                        else if(d.phuongThucTT === "Chuyển khoản") reportObj.transfer_total += d.tongTien;
-
-                        d.danhSachMon.forEach(m => {
-                            if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
-                            if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
-                            reportObj[m.name+"_qty"] += m.qty; 
-                            reportObj[m.name+"_amt"] += (m.price * m.qty);
-                        });
-                    }
-                });
-                
-                // Hiển thị kết quả lên bảng
-                let html = "";
-                Object.keys(reportObj).forEach(k => { 
-                    if(k.endsWith("_qty")) { 
-                        const name = k.replace("_qty", ""); 
-                        html += `<tr><td>${name}</td><td>${reportObj[k]}</td><td>${reportObj[name+"_amt"].toLocaleString()}đ</td></tr>`; 
-                    } 
-                });
-                table.innerHTML = html; 
-                document.getElementById('total-cash').innerText = reportObj.cash_total.toLocaleString() + "đ";
-                document.getElementById('total-transfer').innerText = reportObj.transfer_total.toLocaleString() + "đ";
-                document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
+                if(orderDateStr >= startVal && orderDateStr <= endVal) {
+                    reportObj.all_total += d.tongTien;
+                    if(d.phuongThucTT === "Tiền mặt") reportObj.cash_total += d.tongTien;
+                    else if(d.phuongThucTT === "Chuyển khoản") reportObj.transfer_total += d.tongTien;
+                    d.danhSachMon.forEach(m => {
+                        if(!reportObj[m.name+"_qty"]) { reportObj[m.name+"_qty"] = 0; reportObj[m.name+"_amt"] = 0; }
+                        reportObj[m.name+"_qty"] += m.qty; 
+                        reportObj[m.name+"_amt"] += (m.price * m.qty);
+                    });
+                }
             });
+            
+            let html = "";
+            Object.keys(reportObj).forEach(k => { 
+                if(k.endsWith("_qty")) { 
+                    const name = k.replace("_qty", ""); 
+                    html += `<tr><td>${name}</td><td>${reportObj[k]}</td><td>${reportObj[name+"_amt"].toLocaleString()}đ</td></tr>`; 
+                } 
+            });
+            document.getElementById('revenue-table').innerHTML = html; 
+            document.getElementById('total-cash').innerText = reportObj.cash_total.toLocaleString() + "đ";
+            document.getElementById('total-transfer').innerText = reportObj.transfer_total.toLocaleString() + "đ";
+            document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
         };
 
         let currentEditingOrderId = null;
@@ -418,7 +389,9 @@
             alert("✅ Đã xóa!");
         };
 
-        loadHistory(); loadReport();
+        // Chạy load lần đầu
+        loadHistory();
+        loadReport();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
