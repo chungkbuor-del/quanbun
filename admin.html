@@ -32,6 +32,7 @@
         <div id="admin-panel">
             <h5 class="text-center fw-bold text-danger">⚙️ MENU</h5>
             <div class="admin-menu-item text-primary" onclick="openPage('page-menu')">➕ Thực đơn</div>
+            <div class="admin-menu-item text-success" onclick="openPage('page-expenses')">💸 Nhập hàng</div>
             <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
             <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
             <div class="admin-menu-item text-danger" onclick="logout()">🚪 Đăng xuất</div>
@@ -54,6 +55,20 @@
                 <div class="col-2 col-md-1"><button class="btn btn-primary w-100" onclick="themMon()">LƯU</button></div>
             </div>
             <div id="menu-list-admin" class="mt-4 row justify-content-center"></div>
+        </div>
+
+        <div id="page-expenses" class="admin-page">
+            <span class="close-page-btn" onclick="closePage('page-expenses')">&times;</span>
+            <h3 class="text-success text-center">💸 QUẢN LÝ NHẬP HÀNG</h3>
+            <div class="admin-card">
+                <div class="row g-2">
+                    <div class="col-12 col-md-3"><input type="date" id="exp-date" class="form-control"></div>
+                    <div class="col-7 col-md-5"><input type="text" id="exp-name" class="form-control" placeholder="Tên hàng (ví dụ: Thịt bò, Bún...)"></div>
+                    <div class="col-5 col-md-3"><input type="number" id="exp-amount" class="form-control" placeholder="Số tiền"></div>
+                    <div class="col-12 col-md-1"><button class="btn btn-success w-100" onclick="themChiPhi()">LƯU</button></div>
+                </div>
+            </div>
+            <div id="expense-list" class="mt-3" style="max-height: 60vh; overflow-y: auto;"></div>
         </div>
 
         <div id="page-history" class="admin-page">
@@ -87,7 +102,8 @@
                     <hr>
                     <div class="text-end revenue-detail text-dark">💵 Tiền mặt: <span id="total-cash">0đ</span></div>
                     <div class="text-end revenue-detail text-primary">💳 Chuyển khoản: <span id="total-transfer">0đ</span></div>
-                    <div class="text-end fw-bold fs-4 text-success border-top pt-2">TỔNG CỘNG: <span id="total-thu">0đ</span></div>
+                    <div class="text-end revenue-detail text-danger">📉 Tổng chi nhập hàng: <span id="total-expense">0đ</span></div>
+                    <div class="text-end fw-bold fs-4 text-success border-top pt-2">LỢI NHUẬN: <span id="total-thu">0đ</span></div>
                 </div>
             </div>
         </div>
@@ -186,6 +202,7 @@
         document.getElementById('h-end').valueAsDate = now;
         document.getElementById('r-start').valueAsDate = now;
         document.getElementById('r-end').valueAsDate = now;
+        document.getElementById('exp-date').valueAsDate = now;
 
         window.toggleAdminPanel = () => { document.getElementById('admin-panel').classList.toggle('show'); };
         window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); document.getElementById('admin-panel').classList.remove('show'); };
@@ -194,11 +211,10 @@
         window.themMon = async () => {
             const name = document.getElementById('m-name').value;
             const price = document.getElementById('m-price').value; 
-            const category = document.getElementById('m-cat').value.trim().toUpperCase(); // Tự động viết hoa nhóm
+            const category = document.getElementById('m-cat').value.trim().toUpperCase(); 
             if(name.trim() !== "" && price !== "" && category !== "") { 
                 await addDoc(collection(db, "MENU"), { name, price: parseInt(price), category, createdAt: Timestamp.now() }); 
                 document.getElementById('m-name').value = ""; document.getElementById('m-price').value = ""; 
-                // Giữ lại nhóm vừa nhập để thêm món tiếp theo cho nhanh
             } else {
                 alert("Vui lòng nhập đầy đủ Nhóm, Tên món và Giá!");
             }
@@ -222,7 +238,6 @@
                 }
             });
 
-            // Cập nhật Datalist để gợi ý các nhóm đã có
             dataList.innerHTML = "";
             Array.from(allCats).sort().forEach(c => {
                 dataList.innerHTML += `<option value="${c}">`;
@@ -239,6 +254,41 @@
 
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
+        // XỬ LÝ NHẬP HÀNG
+        window.themChiPhi = async () => {
+            const dateVal = document.getElementById('exp-date').value;
+            const name = document.getElementById('exp-name').value;
+            const amount = document.getElementById('exp-amount').value;
+            if(!dateVal || !name || !amount) return alert("Vui lòng nhập đủ thông tin chi phí!");
+            
+            const expDate = new Date(dateVal);
+            await addDoc(collection(db, "expenses"), {
+                date: Timestamp.fromDate(expDate),
+                name: name,
+                amount: parseInt(amount)
+            });
+            document.getElementById('exp-name').value = "";
+            document.getElementById('exp-amount').value = "";
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã lưu chi phí', showConfirmButton: false, timer: 1500 });
+        };
+
+        onSnapshot(query(collection(db, "expenses"), orderBy("date", "desc")), snap => {
+            const list = document.getElementById('expense-list');
+            list.innerHTML = "";
+            snap.forEach(d => {
+                const data = d.data();
+                const date = data.date.toDate().toLocaleDateString('vi-VN');
+                list.innerHTML += `
+                    <div class="alert alert-secondary p-2 mb-1 d-flex justify-content-between align-items-center">
+                        <span><b>${date}</b>: ${data.name} - <span class="text-danger fw-bold">${data.amount.toLocaleString()}đ</span></span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="xoaChiPhi('${d.id}')">×</button>
+                    </div>`;
+            });
+        });
+
+        window.xoaChiPhi = async (id) => { if(confirm("Xóa dòng chi phí này?")) await deleteDoc(doc(db, "expenses", id)); };
+
+        // TIẾP TỤC CÁC CHỨC NĂNG CŨ
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
             const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
@@ -356,10 +406,21 @@
             });
         };
 
-        window.loadReport = () => {
+        window.loadReport = async () => {
             const startVal = document.getElementById('r-start').value; const endVal = document.getElementById('r-end').value;
             if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày!");
             const startDate = new Date(startVal); startDate.setHours(0, 0, 0, 0); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999); 
+            
+            // Lấy tiền hàng trước
+            const expSnap = await getDocs(collection(db, "expenses"));
+            let totalExp = 0;
+            expSnap.forEach(edoc => {
+                const edata = edoc.data();
+                const edate = edata.date.toDate();
+                if(edate >= startDate && edate <= endDate) totalExp += edata.amount;
+            });
+
+            // Sau đó lấy doanh thu
             const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
             onSnapshot(qHistory, snap => {
                 const table = document.getElementById('revenue-table'); let reportObj = { all_total: 0, cash_total: 0, transfer_total: 0 };
@@ -379,9 +440,12 @@
                 let html = ""; Object.keys(reportObj).forEach(k => { 
                     if(k.endsWith("_qty")) { const name = k.replace("_qty", ""); html += `<tr><td>${name}</td><td>${reportObj[k]}</td><td>${reportObj[name+"_amt"].toLocaleString()}đ</td></tr>`; } 
                 });
-                table.innerHTML = html; document.getElementById('total-cash').innerText = reportObj.cash_total.toLocaleString() + "đ";
+                table.innerHTML = html; 
+                document.getElementById('total-cash').innerText = reportObj.cash_total.toLocaleString() + "đ";
                 document.getElementById('total-transfer').innerText = reportObj.transfer_total.toLocaleString() + "đ";
-                document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
+                document.getElementById('total-expense').innerText = totalExp.toLocaleString() + "đ";
+                // Lợi nhuận = Tổng doanh thu - Tổng chi
+                document.getElementById('total-thu').innerText = (reportObj.all_total - totalExp).toLocaleString() + "đ";
             });
         };
 
