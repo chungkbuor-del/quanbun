@@ -18,7 +18,7 @@
         .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 1001; padding: 20px; overflow-y: auto; }
         .admin-page.show { display: block; }
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
-        .cat-title { background: #eee; padding: 5px 10px; font-weight: bold; border-radius: 5px; margin-top: 10px; color: #555; font-size: 0.9rem; }
+        .cat-title { background: #eee; padding: 5px 10px; font-weight: bold; border-radius: 5px; margin-top: 10px; color: #555; font-size: 0.9rem; text-transform: uppercase; }
         .revenue-detail { font-size: 1.1rem; margin-bottom: 5px; }
         .order-note { font-style: italic; color: #666; font-size: 0.85rem; background: #fff9c4; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 5px; }
     </style>
@@ -42,11 +42,12 @@
             <h3 class="text-primary text-center">➕ QUẢN LÝ THỰC ĐƠN</h3>
             <div class="row g-2 justify-content-center mt-3 p-3 border rounded bg-light">
                 <div class="col-12 col-md-3">
-                    <select id="m-cat" class="form-select">
-                        <option value="BÚN-BÁNH CANH">BÚN-BÁNH CANH</option>
-                        <option value="BÒ NÉ">BÒ NÉ</option>
-                        <option value="KHÁC">KHÁC</option>
-                    </select>
+                    <input type="text" id="m-cat" class="form-control" placeholder="Gõ nhóm mới hoặc chọn..." list="category-datalist">
+                    <datalist id="category-datalist">
+                        <option value="BÚN-BÁNH CANH">
+                        <option value="BÒ NÉ">
+                        <option value="KHÁC">
+                    </datalist>
                 </div>
                 <div class="col-7 col-md-4"><input type="text" id="m-name" class="form-control" placeholder="Tên món"></div>
                 <div class="col-3 col-md-2"><input type="number" id="m-price" class="form-control" placeholder="Giá"></div>
@@ -151,7 +152,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const notificationSound = document.getElementById('notification-sound');
-        
         notificationSound.volume = 1.0; 
 
         const USERNAME = "admin";
@@ -194,25 +194,40 @@
         window.themMon = async () => {
             const name = document.getElementById('m-name').value;
             const price = document.getElementById('m-price').value; 
-            const category = document.getElementById('m-cat').value;
-            if(name.trim() !== "" && price !== "") { 
+            const category = document.getElementById('m-cat').value.trim().toUpperCase(); // Tự động viết hoa nhóm
+            if(name.trim() !== "" && price !== "" && category !== "") { 
                 await addDoc(collection(db, "MENU"), { name, price: parseInt(price), category, createdAt: Timestamp.now() }); 
                 document.getElementById('m-name').value = ""; document.getElementById('m-price').value = ""; 
+                // Giữ lại nhóm vừa nhập để thêm món tiếp theo cho nhanh
+            } else {
+                alert("Vui lòng nhập đầy đủ Nhóm, Tên món và Giá!");
             }
         };
 
-        // SẮP XẾP MÓN TRONG THỰC ĐƠN THEO THỜI GIAN TẠO (MỚI NHẤT LÊN ĐẦU)
         onSnapshot(query(collection(db, "MENU"), orderBy("createdAt", "desc")), snap => {
             const list = document.getElementById('menu-list-admin'); 
+            const dataList = document.getElementById('category-datalist');
             list.innerHTML = ""; menuItems = [];
             let grouped = {};
+            let allCats = new Set(["BÚN-BÁNH CANH", "BÒ NÉ", "KHÁC"]);
+
             snap.forEach(d => { 
                 const data = d.data();
                 const item = {id: d.id, ...data};
                 menuItems.push(item); 
-                if(!grouped[data.category]) grouped[data.category] = [];
-                grouped[data.category].push(item);
+                if(data.category) {
+                    allCats.add(data.category.toUpperCase());
+                    if(!grouped[data.category]) grouped[data.category] = [];
+                    grouped[data.category].push(item);
+                }
             });
+
+            // Cập nhật Datalist để gợi ý các nhóm đã có
+            dataList.innerHTML = "";
+            Array.from(allCats).sort().forEach(c => {
+                dataList.innerHTML += `<option value="${c}">`;
+            });
+
             for(let cat in grouped) {
                 list.innerHTML += `<div class="col-12 cat-title">${cat}</div>`;
                 grouped[cat].forEach(m => {
