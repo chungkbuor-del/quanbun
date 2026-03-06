@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Quán</title>
+    <title>Quản lý Quán </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
@@ -20,7 +20,7 @@
         .close-page-btn { position: absolute; top: 10px; right: 15px; font-size: 2rem; cursor: pointer; color: #dc3545; }
         .cat-title { background: #eee; padding: 5px 10px; font-weight: bold; border-radius: 5px; margin-top: 10px; color: #555; font-size: 0.9rem; }
         .revenue-detail { font-size: 1.1rem; margin-bottom: 5px; }
-        .note-text { color: #0d6efd; font-size: 0.85rem; font-weight: bold; font-style: italic; display: block; margin-top: 2px; }
+        .order-note { font-style: italic; color: #666; font-size: 0.85rem; background: #fff9c4; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -95,7 +95,8 @@
             <div class="admin-card">
                 <h5 class="text-center fw-bold text-primary">📝 TẠO ĐƠN MỚI</h5>
                 <div class="row g-2 mb-2">
-                    <div class="col-12"><input type="text" id="order-customer" class="form-control" placeholder="Tên khách hàng"></div>
+                    <div class="col-12 col-md-6"><input type="text" id="order-customer" class="form-control" placeholder="Tên khách hàng"></div>
+                    <div class="col-12 col-md-6"><input type="text" id="order-note" class="form-control" placeholder="Ghi chú (vị cay, ít bún...)"></div>
                 </div>
                 <div id="order-items-input"></div>
                 <button class="btn btn-outline-primary btn-sm mb-2" onclick="addOrderItemInput()">+ Thêm món</button>
@@ -116,7 +117,11 @@
                         <h5 class="modal-title">Sửa đơn: <span id="modal-customer-name"></span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" id="modal-order-content">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ghi chú:</label>
+                            <input type="text" id="modal-order-note" class="form-control">
+                        </div>
                         <div id="modal-items-list"></div>
                         <button class="btn btn-sm btn-outline-primary mt-2" onclick="addModalItemInput()">+ Thêm món vào đơn</button>
                     </div>
@@ -146,6 +151,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const notificationSound = document.getElementById('notification-sound');
+        
         notificationSound.volume = 1.0; 
 
         const USERNAME = "admin";
@@ -190,13 +196,13 @@
             const price = document.getElementById('m-price').value; 
             const category = document.getElementById('m-cat').value;
             if(name.trim() !== "" && price !== "") { 
-                await addDoc(collection(db, "MENU"), { name, price: parseInt(price), category }); 
+                await addDoc(collection(db, "MENU"), { name, price: parseInt(price), category, createdAt: Timestamp.now() }); 
                 document.getElementById('m-name').value = ""; document.getElementById('m-price').value = ""; 
             }
         };
 
-        // LẮNG NGHE MENU (CÓ SẮP XẾP)
-        onSnapshot(collection(db, "MENU"), snap => {
+        // SẮP XẾP MÓN TRONG THỰC ĐƠN THEO THỜI GIAN TẠO (MỚI NHẤT LÊN ĐẦU)
+        onSnapshot(query(collection(db, "MENU"), orderBy("createdAt", "desc")), snap => {
             const list = document.getElementById('menu-list-admin'); 
             list.innerHTML = ""; menuItems = [];
             let grouped = {};
@@ -207,14 +213,12 @@
                 if(!grouped[data.category]) grouped[data.category] = [];
                 grouped[data.category].push(item);
             });
-
-            const cats = Object.keys(grouped).sort();
-            cats.forEach(cat => {
+            for(let cat in grouped) {
                 list.innerHTML += `<div class="col-12 cat-title">${cat}</div>`;
-                grouped[cat].sort((a,b) => a.name.localeCompare(b.name)).forEach(m => {
+                grouped[cat].forEach(m => {
                     list.innerHTML += `<div class="col-auto m-1"><span class="badge bg-light text-dark border p-2">${m.name} (${m.price.toLocaleString()}đ) <b class="text-danger ms-1" onclick="xoaMon('${m.id}')" style="cursor:pointer">×</b></span></div>`;
                 });
-            });
+            }
             if(document.getElementById('order-items-input').innerHTML === "") addOrderItemInput();
         });
 
@@ -222,27 +226,30 @@
 
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
-            const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name}</option>`).join('')}</select>`;
-            container.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-1 order-item-row"><div class="col-8">${selectHtml}</div><div class="col-3"><input type="number" class="form-control dish-qty" value="1" min="1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
+            const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
+            const inputHtml = `<div class="row g-2 mb-1 order-item-row"><div class="col-8">${selectHtml}</div><div class="col-3"><input type="number" class="form-control dish-qty" value="1" min="1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`;
+            container.insertAdjacentHTML('beforeend', inputHtml);
         };
 
         window.datMon = async () => {
             const customer = document.getElementById('order-customer').value;
+            const note = document.getElementById('order-note').value;
             if(!customer) return alert("Nhập tên khách!");
             const rows = document.querySelectorAll('.order-item-row');
             let danhSachMon = []; let tongTien = 0;
             rows.forEach(row => {
                 const select = row.querySelector('.dish-select'); const option = select.options[select.selectedIndex];
                 const qty = parseInt(row.querySelector('.dish-qty').value); const price = parseInt(option.dataset.price);
-                danhSachMon.push({name: option.dataset.name, price: price, qty: qty, note: ""});
+                danhSachMon.push({name: option.dataset.name, price: price, qty: qty});
                 tongTien += price * qty;
             });
             if(danhSachMon.length === 0) return alert("Thêm món!");
-            await addDoc(collection(db, "orders"), { khach: customer, danhSachMon: danhSachMon, tongTien: tongTien, trangThai: "dang_cho", thoiGian: Timestamp.now() });
-            document.getElementById('order-customer').value = ""; document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
+            await addDoc(collection(db, "orders"), { khach: customer, note: note, danhSachMon: danhSachMon, tongTien: tongTien, trangThai: "dang_cho", thoiGian: Timestamp.now() });
+            document.getElementById('order-customer').value = ""; 
+            document.getElementById('order-note').value = "";
+            document.getElementById('order-items-input').innerHTML = ""; addOrderItemInput();
         };
 
-        // LẮNG NGHE ĐƠN HÀNG & HIỂN THỊ GHI CHÚ
         let currentOrders = new Set();
         onSnapshot(query(collection(db, "orders"), orderBy("thoiGian", "desc")), snap => {
             const listCho = document.getElementById('list-cho'); 
@@ -253,32 +260,30 @@
             snap.forEach(docOrder => {
                 const d = docOrder.data();
                 if (d.trangThai === "da_thanh_toan") return;
+                
                 newOrdersSet.add(docOrder.id);
-                if (!currentOrders.has(docOrder.id) && d.trangThai === "dang_cho") playBell();
+                if (!currentOrders.has(docOrder.id) && d.trangThai === "dang_cho") {
+                    playBell();
+                }
 
-                // LOGIC HIỂN THỊ MÓN KÈM GHI CHÚ
-                const items = d.danhSachMon.map(i => `
-                    <div>
-                        • ${i.name} <b>x${i.qty}</b>
-                        ${i.note ? `<span class="note-text">📝 ${i.note}</span>` : ''}
-                    </div>
-                `).join('');
-
-                let html = `<div class="order-box">
-                    <div class="fw-bold text-danger fs-6">👤 ${d.khach}</div>
-                    <div class="small my-1">${items}</div>
-                    <div class="fw-bold border-top pt-1 text-end">${Number(d.tongTien).toLocaleString()}đ</div>`;
+                const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
+                const noteHtml = d.note ? `<div class="order-note">📝 ${d.note}</div>` : '';
+                
+                let html = `<div class="order-box">`;
+                html += `<div class="fw-bold text-danger fs-6">👤 ${d.khach}</div><div class="small my-1">${items}</div>${noteHtml}<div class="fw-bold border-top pt-1 text-end mt-1">${Number(d.tongTien).toLocaleString()}đ</div>`;
                 
                 if (d.trangThai === 'dang_cho') {
-                    html += `<div class="row g-1 mt-2">
+                    html += `
+                    <div class="row g-1 mt-2">
                         <div class="col-8"><button class="btn btn-sm btn-primary w-100 fw-bold" onclick="done('${docOrder.id}')">XONG</button></div>
                         <div class="col-4"><button class="btn btn-sm btn-outline-danger w-100" onclick="xoaDonHang('${docOrder.id}')">Hủy</button></div>
-                        <div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món</button></div>
+                        <div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món / Ghi chú</button></div>
                     </div>`;
-                } else {
-                    html += `<div class="row g-1 mt-2">
+                } else if (d.trangThai === 'da_xong') {
+                    html += `
+                    <div class="row g-1 mt-2">
                         <div class="col-12"><button class="btn btn-sm btn-success w-100 fw-bold" onclick="pay('${docOrder.id}')">THANH TOÁN</button></div>
-                        <div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa/Thêm</button></div>
+                        <div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món / Ghi chú</button></div>
                     </div>`;
                 }
                 html += `</div>`;
@@ -290,7 +295,10 @@
         function playBell() {
             notificationSound.currentTime = 0;
             notificationSound.play().then(() => {
-                setTimeout(() => { notificationSound.currentTime = 0; notificationSound.play(); }, 800);
+                setTimeout(() => {
+                    notificationSound.currentTime = 0;
+                    notificationSound.play();
+                }, 800);
             }).catch(e => console.log("Cần tương tác với màn hình để phát tiếng"));
         }
 
@@ -298,29 +306,36 @@
 
         window.pay = async (id) => {
             const { value: method } = await Swal.fire({
-                title: 'Thanh toán', icon: 'question', showDenyButton: true, showCancelButton: true,
+                title: 'Chọn hình thức thanh toán', icon: 'question', showDenyButton: true, showCancelButton: true,
                 confirmButtonText: '💵 Tiền mặt', denyButtonText: '💳 Chuyển khoản', cancelButtonText: 'Đóng',
                 confirmButtonColor: '#ffc107', denyButtonColor: '#0d6efd',
+                customClass: { confirmButton: 'text-dark fw-bold', denyButton: 'fw-bold' }
             });
-            let phuongThuc = method === true ? "Tiền mặt" : (method === false ? "Chuyển khoản" : "");
-            if(phuongThuc && confirm(`Xác nhận thanh toán [${phuongThuc}]?`)) {
-                await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan", phuongThucTT: phuongThuc });
-            }
+            let phuongThuc = "";
+            if (method === true) phuongThuc = "Tiền mặt";
+            else if (method === false) phuongThuc = "Chuyển khoản";
+            else return;
+            if(!confirm(`Xác nhận thanh toán [${phuongThuc}] cho đơn này?`)) return;
+            try { await updateDoc(doc(db, "orders", id), { trangThai: "da_thanh_toan", phuongThucTT: phuongThuc }); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Đã xong: ${phuongThuc}`, showConfirmButton: false, timer: 1500 }); } 
+            catch (e) { Swal.fire('Lỗi!', 'Không thể cập nhật đơn hàng', 'error'); }
         };
 
         window.loadHistory = () => {
             const startVal = document.getElementById('h-start').value; const endVal = document.getElementById('h-end').value;
-            if(!startVal || !endVal) return alert("Chọn ngày!");
-            const startDate = new Date(startVal); startDate.setHours(0,0,0,0); const endDate = new Date(endVal); endDate.setHours(23,59,59,999); 
-            onSnapshot(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc")), snap => {
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày!");
+            const startDate = new Date(startVal); startDate.setHours(0, 0, 0, 0); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999); 
+            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"), orderBy("thoiGian", "desc"));
+            onSnapshot(qHistory, snap => {
                 const listHistory = document.getElementById('list-history'); listHistory.innerHTML = "";
                 snap.forEach(docOrder => {
                     const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
                     if(orderDate >= startDate && orderDate <= endDate) {
                         let itemsTable = `<table class="table table-sm table-bordered mt-1 small"><tbody>`;
-                        d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name} ${m.note ? `(<i>${m.note}</i>)` : ''}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
+                        d.danhSachMon.forEach(m => { itemsTable += `<tr><td>${m.name}</td><td>${m.qty}</td><td>${(m.price * m.qty).toLocaleString()}đ</td></tr>`; });
                         itemsTable += `</tbody></table>`;
-                        listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d"><b>👤 ${d.khach} [${d.phuongThucTT}]</b> - <span class="small">${orderDate.toLocaleString('vi-VN')}</span>${itemsTable}<div class="text-end fw-bold text-success">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div></div>`;
+                        const ptLabel = d.phuongThucTT ? `<span class="badge bg-info text-dark">${d.phuongThucTT}</span>` : '';
+                        const hNote = d.note ? `<div class="order-note mb-1">📝 ${d.note}</div>` : '';
+                        listHistory.innerHTML += `<div class="order-box mb-3" style="border-left-color: #6c757d"><div class="d-flex justify-content-between"><b>👤 ${d.khach} ${ptLabel}</b><span class="small text-muted">${orderDate.toLocaleString('vi-VN')}</span></div>${hNote}${itemsTable}<div class="text-end fw-bold text-success">Tổng: ${Number(d.tongTien).toLocaleString()}đ</div></div>`;
                     }
                 });
             });
@@ -328,24 +343,30 @@
 
         window.loadReport = () => {
             const startVal = document.getElementById('r-start').value; const endVal = document.getElementById('r-end').value;
-            const startDate = new Date(startVal); startDate.setHours(0,0,0,0); const endDate = new Date(endVal); endDate.setHours(23,59,59,999); 
-            onSnapshot(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan")), snap => {
-                const table = document.getElementById('revenue-table'); let reportObj = { all: 0, cash: 0, transfer: 0 };
+            if(!startVal || !endVal) return alert("Vui lòng chọn đủ ngày!");
+            const startDate = new Date(startVal); startDate.setHours(0, 0, 0, 0); const endDate = new Date(endVal); endDate.setHours(23, 59, 59, 999); 
+            const qHistory = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            onSnapshot(qHistory, snap => {
+                const table = document.getElementById('revenue-table'); let reportObj = { all_total: 0, cash_total: 0, transfer_total: 0 };
                 snap.forEach(docOrder => {
                     const d = docOrder.data(); const orderDate = d.thoiGian.toDate();
                     if(orderDate >= startDate && orderDate <= endDate) {
-                        reportObj.all += d.tongTien;
-                        d.phuongThucTT === "Tiền mặt" ? reportObj.cash += d.tongTien : reportObj.transfer += d.tongTien;
+                        reportObj.all_total += d.tongTien;
+                        if(d.phuongThucTT === "Tiền mặt") reportObj.cash_total += d.tongTien;
+                        else if(d.phuongThucTT === "Chuyển khoản") reportObj.transfer_total += d.tongTien;
                         d.danhSachMon.forEach(m => {
-                            if(!reportObj[m.name]) reportObj[m.name] = { qty: 0, amt: 0 };
-                            reportObj[m.name].qty += m.qty; reportObj[m.name].amt += (m.price * m.qty);
+                            if(!reportObj[m.name+"_qty"]) reportObj[m.name+"_qty"] = 0;
+                            if(!reportObj[m.name+"_amt"]) reportObj[m.name+"_amt"] = 0;
+                            reportObj[m.name+"_qty"] += m.qty; reportObj[m.name+"_amt"] += (m.price * m.qty);
                         });
                     }
                 });
-                let html = ""; Object.keys(reportObj).forEach(k => { if(reportObj[k].qty) html += `<tr><td>${k}</td><td>${reportObj[k].qty}</td><td>${reportObj[k].amt.toLocaleString()}đ</td></tr>`; });
-                table.innerHTML = html; document.getElementById('total-cash').innerText = reportObj.cash.toLocaleString() + "đ";
-                document.getElementById('total-transfer').innerText = reportObj.transfer.toLocaleString() + "đ";
-                document.getElementById('total-thu').innerText = reportObj.all.toLocaleString() + "đ";
+                let html = ""; Object.keys(reportObj).forEach(k => { 
+                    if(k.endsWith("_qty")) { const name = k.replace("_qty", ""); html += `<tr><td>${name}</td><td>${reportObj[k]}</td><td>${reportObj[name+"_amt"].toLocaleString()}đ</td></tr>`; } 
+                });
+                table.innerHTML = html; document.getElementById('total-cash').innerText = reportObj.cash_total.toLocaleString() + "đ";
+                document.getElementById('total-transfer').innerText = reportObj.transfer_total.toLocaleString() + "đ";
+                document.getElementById('total-thu').innerText = reportObj.all_total.toLocaleString() + "đ";
             });
         };
 
@@ -353,6 +374,7 @@
         window.openEditModal = async (orderId) => {
             currentEditingOrderId = orderId; const docSnap = await getDoc(doc(db, "orders", orderId)); const data = docSnap.data();
             document.getElementById('modal-customer-name').innerText = data.khach;
+            document.getElementById('modal-order-note').value = data.note || "";
             const itemsList = document.getElementById('modal-items-list'); itemsList.innerHTML = "";
             data.danhSachMon.forEach((item) => { addModalItemInput(item); });
             new bootstrap.Modal(document.getElementById('editOrderModal')).show();
@@ -361,32 +383,32 @@
         window.addModalItemInput = (item = null) => {
             const itemsList = document.getElementById('modal-items-list');
             let selectHtml = `<select class="form-select modal-dish-select">`;
-            menuItems.forEach(m => { selectHtml += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}" ${item && m.name === item.name ? 'selected' : ''}>${m.name}</option>`; });
-            const qty = item ? item.qty : 1; const note = item ? item.note : "";
-            itemsList.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-2 modal-item-row"><div class="col-5">${selectHtml}</div><div class="col-2"><input type="number" class="form-control modal-qty" value="${qty}"></div><div class="col-4"><input type="text" class="form-control modal-note" value="${note}" placeholder="Ghi chú"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
+            menuItems.forEach(m => { const selected = item && m.name === item.name ? 'selected' : ''; selectHtml += `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}" ${selected}>${m.name} - ${m.price.toLocaleString()}đ</option>`; });
+            selectHtml += `</select>`;
+            const qty = item ? item.qty : 1;
+            itemsList.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-2 modal-item-row"><div class="col-6">${selectHtml}</div><div class="col-3"><input type="number" class="form-control modal-qty" value="${qty}" min="1"></div><div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
         };
 
         window.saveOrderEdit = async () => {
             const rows = document.querySelectorAll('.modal-item-row');
+            const newNote = document.getElementById('modal-order-note').value;
             let danhSachMon = []; let tongTien = 0;
             rows.forEach(row => {
                 const select = row.querySelector('.modal-dish-select'); const option = select.options[select.selectedIndex];
-                const qty = parseInt(row.querySelector('.modal-qty').value);
-                const note = row.querySelector('.modal-note').value;
-                const price = parseInt(option.dataset.price);
-                danhSachMon.push({name: option.dataset.name, qty, price, note}); tongTien += qty * price;
+                const qty = parseInt(row.querySelector('.modal-qty').value); const price = parseInt(option.dataset.price);
+                danhSachMon.push({name: option.dataset.name, qty, price}); tongTien += qty * price;
             });
-            await updateDoc(doc(db, "orders", currentEditingOrderId), { danhSachMon, tongTien });
+            await updateDoc(doc(db, "orders", currentEditingOrderId), { danhSachMon, tongTien, note: newNote });
             bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
         };
 
         window.xoaDonHang = async (id) => { if(confirm("Hủy đơn này?")) await deleteDoc(doc(db, "orders", id)); };
         window.xoaToanBoLichSu = async () => {
-            if(confirm("Xóa sạch lịch sử thanh toán?")) {
-                const q = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
-                const snap = await getDocs(q); await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
-                alert("Đã xóa!");
-            }
+            if(!confirm("⚠️ Bạn có chắc muốn xóa TOÀN BỘ lịch sử thanh toán không?")) return;
+            const q = query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan"));
+            const snap = await getDocs(q);
+            await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+            alert("✅ Đã xóa!");
         };
 
         loadHistory(); loadReport();
