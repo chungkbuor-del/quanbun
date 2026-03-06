@@ -5,34 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đặt Món - Quán</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { background: #f8f9fa; padding-bottom: 180px; font-family: sans-serif; }
-        .menu-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        body { background: #f8f9fa; padding-bottom: 200px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        /* Tiêu đề nhóm món */
+        .category-header { 
+            background: #dc3545; 
+            color: white; 
+            padding: 8px 15px; 
+            border-radius: 8px; 
+            margin-top: 25px; 
+            margin-bottom: 15px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .menu-item { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 15px; 
+            margin-bottom: 12px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            border: 1px solid #eee; 
+            transition: transform 0.2s;
+        }
+        .menu-item:active { transform: scale(0.98); }
+        .dish-name { font-size: 1.05rem; color: #333; }
+        .dish-price { color: #dc3545; font-weight: bold; }
+        
         .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
         .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        .note-input { font-size: 0.85rem; border: none; border-bottom: 1px dashed #ccc; border-radius: 0; padding: 2px 0; background: transparent; }
-        .category-tag { font-size: 0.7rem; background: #eee; color: #666; padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; display: inline-block; text-transform: uppercase; }
+        .note-input { font-size: 0.9rem; border-color: #ced4da; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container py-3">
-        <h3 class="text-center fw-bold text-danger mb-4">🍜 ĐẶT MÓN QUÁN</h3>
+        <h3 class="text-center fw-bold text-danger mb-4">🍜 THỰC ĐƠN ĐẶT MÓN</h3>
         
-        <div class="card p-3 mb-4 border-0 shadow-sm">
+        <div class="card p-3 mb-2 border-0 shadow-sm">
             <label class="fw-bold mb-1 small text-muted text-uppercase">Tên của bạn:</label>
-            <input type="text" id="ten-khach" class="form-control form-control-lg border-danger shadow-none" placeholder="Nhập tên tại đây...">
+            <input type="text" id="ten-khach" class="form-control form-control-lg border-danger shadow-none" placeholder="Nhập tên để quán biết là ai gọi...">
+            
+            <input type="text" id="ghi-chu-don" class="form-control note-input shadow-none" placeholder="Ghi chú thêm (vd: không rau, ít cay...)">
         </div>
 
         <div id="display-menu">
-            <div class="text-center p-5 text-muted">Đang tải danh sách món...</div>
+            <div class="text-center p-5 text-muted">Đang chuẩn bị thực đơn...</div>
         </div>
 
         <div class="cart-bar">
-            <div id="cart-details" class="mb-3" style="max-height: 150px; overflow-y: auto;"></div>
+            <div id="cart-details" class="mb-3" style="max-height: 100px; overflow-y: auto;"></div>
             <div class="d-flex justify-content-between align-items-center border-top pt-2">
-                <div><small class="text-muted">Tổng tiền:</small><h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4></div>
-                <button class="btn btn-danger btn-lg fw-bold px-4" onclick="guiDonHang()">GỬI ĐƠN</button>
+                <div>
+                    <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Tổng cộng:</small>
+                    <h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4>
+                </div>
+                <button class="btn btn-danger btn-lg fw-bold px-4 shadow" onclick="guiDonHang()">GỬI ĐƠN NGAY</button>
             </div>
         </div>
     </div>
@@ -54,36 +81,53 @@
 
         let cart = {};
 
-        // ĐỒNG BỘ: SẮP XẾP MỚI NHẤT LÊN ĐẦU (OrderBy createdAt)
-        onSnapshot(query(collection(db, "MENU"), orderBy("createdAt", "desc")), (snap) => {
+        // 1. LẤY DỮ LIỆU VÀ NHÓM THEO DANH MỤC
+        const qMenu = query(collection(db, "MENU"), orderBy("createdAt", "desc"));
+        onSnapshot(qMenu, (snap) => {
             const menuDiv = document.getElementById('display-menu');
             menuDiv.innerHTML = "";
             
+            let grouped = {};
             snap.forEach(d => {
                 const item = d.data();
-                menuDiv.innerHTML += `
-                    <div class="menu-item d-flex justify-content-between align-items-center">
-                        <div style="flex: 1; padding-right: 10px;">
-                            <span class="category-tag">${item.category || 'KHÁC'}</span>
-                            <div class="fw-bold fs-6">${item.name}</div>
-                            <div class="text-danger fw-bold small">${item.price.toLocaleString()}đ</div>
-                        </div>
-                        <button class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm" 
-                                onclick="updateCart('${item.name.replace(/\n/g, " ")}', ${item.price}, 1)">
-                            + Thêm
-                        </button>
-                    </div>`;
+                const cat = item.category || "MÓN KHÁC";
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(item);
+            });
+
+            // Sắp xếp tên danh mục theo bảng chữ cái và hiển thị
+            Object.keys(grouped).sort().forEach(catName => {
+                // Tạo tiêu đề nhóm (Ví dụ: BÒ NÉ, BÁNH CANH)
+                const header = document.createElement('div');
+                header.className = "category-header";
+                header.innerText = catName;
+                menuDiv.appendChild(header);
+
+                // Liệt kê các món trong nhóm đó
+                grouped[catName].forEach(item => {
+                    const itemHtml = `
+                        <div class="menu-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold dish-name">${item.name}</div>
+                                <div class="dish-price">${item.price.toLocaleString()}đ</div>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" 
+                                    onclick="updateCart('${item.name.replace(/\n/g, " ")}', ${item.price}, 1)">
+                                + Thêm
+                            </button>
+                        </div>`;
+                    menuDiv.innerHTML += itemHtml;
+                });
             });
         });
 
+        // 2. CẬP NHẬT GIỎ HÀNG
         window.updateCart = (name, price, change) => {
-            if (!cart[name]) cart[name] = { name, price, qty: 0, note: "" };
+            if (!cart[name]) cart[name] = { name, price, qty: 0 };
             cart[name].qty += change;
             if (cart[name].qty <= 0) delete cart[name];
             renderUI();
         };
-
-        window.updateNote = (name, val) => { if (cart[name]) cart[name].note = val; };
 
         function renderUI() {
             const list = document.getElementById('cart-details');
@@ -92,38 +136,43 @@
             Object.values(cart).forEach(item => {
                 total += item.price * item.qty;
                 list.innerHTML += `
-                    <div class="bg-light p-2 rounded border mb-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold small">${item.name}</span>
-                            <div class="d-flex align-items-center">
-                                <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, -1)">-</button>
-                                <b class="mx-3 fs-6">${item.qty}</b>
-                                <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, 1)">+</button>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 bg-light p-2 rounded border">
+                        <span class="fw-bold small">${item.name}</span>
+                        <div class="d-flex align-items-center">
+                            <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, -1)">-</button>
+                            <b class="mx-3">${item.qty}</b>
+                            <button class="qty-btn" onclick="updateCart('${item.name}', ${item.price}, 1)">+</button>
                         </div>
-                        <input type="text" class="form-control note-input mt-1" placeholder="Ghi chú món này..." value="${item.note}" onchange="updateNote('${item.name}', this.value)">
                     </div>`;
             });
             document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
         }
 
+        // 3. GỬI ĐƠN HÀNG
         window.guiDonHang = async () => {
             const ten = document.getElementById('ten-khach').value.trim();
+            const note = document.getElementById('ghi-chu-don').value.trim();
             const items = Object.values(cart);
-            if (!ten) return Swal.fire('Lỗi', 'Vui lòng nhập tên!', 'warning');
-            if (items.length === 0) return Swal.fire('Lỗi', 'Chưa chọn món!', 'info');
+            
+            if (!ten) return alert("Vui lòng nhập tên của bạn!");
+            if (items.length === 0) return alert("Bạn chưa chọn món nào!");
 
             try {
                 await addDoc(collection(db, "orders"), {
                     khach: ten,
+                    note: note,
                     danhSachMon: items,
                     tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
                     trangThai: "dang_cho",
                     thoiGian: serverTimestamp()
                 });
-                Swal.fire('Thành công', 'Đã gửi đơn!', 'success');
-                cart = {}; renderUI(); document.getElementById('ten-khach').value = "";
-            } catch(e) { Swal.fire('Lỗi', 'Gửi đơn thất bại!', 'error'); }
+                alert("Đã gửi đơn thành công! Quán đang chuẩn bị cho bạn.");
+                cart = {}; renderUI();
+                document.getElementById('ten-khach').value = "";
+                document.getElementById('ghi-chu-don').value = "";
+            } catch(e) { 
+                alert("Lỗi khi gửi đơn, vui lòng thử lại!"); 
+            }
         };
     </script>
 </body>
