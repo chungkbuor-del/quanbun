@@ -11,6 +11,12 @@
         .main-content { display: none; } 
         .admin-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .order-box { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #dc3545; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* --- THÊM STYLE CHO ĐƠN BỊ SỬA --- */
+        .order-box.updated { border-left-color: #ffc107; background: #fffdf0; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .badge-update { font-size: 0.7rem; background: #ffc107; color: #000; padding: 2px 5px; border-radius: 5px; font-weight: bold; margin-left: 5px; }
+
         #btn-toggle-admin { position: fixed; top: 15px; left: 15px; z-index: 1000; }
         #admin-panel { display: none; position: fixed; top: 60px; left: 15px; width: 250px; height: calc(100vh - 80px); background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 999; overflow-y: auto; }
         #admin-panel.show { display: block; }
@@ -22,7 +28,6 @@
         .revenue-detail { font-size: 1.1rem; margin-bottom: 5px; }
         .order-note { font-style: italic; color: #666; font-size: 0.85rem; background: #fff9c4; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 5px; }
         
-        /* Style cho phần nhập hàng mới */
         details summary::-webkit-details-marker { display: none; }
         details summary { list-style: none; outline: none; transition: 0.3s; }
         details[open] summary { border-bottom: 1px solid #eee; background: #f8f9fa; border-radius: 12px 12px 0 0; }
@@ -216,7 +221,7 @@
         window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); document.getElementById('admin-panel').classList.remove('show'); };
         window.closePage = (pageId) => { document.getElementById(pageId).classList.remove('show'); };
 
-        // QUẢN LÝ THỰC ĐƠN
+        // GIỮ NGUYÊN THEM MON, XOA MON, CHI PHI...
         window.themMon = async () => {
             const name = document.getElementById('m-name').value;
             const price = document.getElementById('m-price').value; 
@@ -253,7 +258,6 @@
 
         window.xoaMon = async (id) => { if(confirm("Xóa món này?")) await deleteDoc(doc(db, "MENU", id)); };
 
-        // XỬ LÝ NHẬP HÀNG (GOM NHÓM & TÌM KIẾM)
         window.themChiPhi = async () => {
             const dateVal = document.getElementById('exp-date').value;
             const name = document.getElementById('exp-name').value;
@@ -278,12 +282,10 @@
             const list = document.getElementById('expense-list');
             const searchKey = document.getElementById('exp-search').value.toLowerCase();
             list.innerHTML = "";
-
             const filtered = allExpenses.filter(item => {
                 const dateStr = item.date.toDate().toLocaleDateString('vi-VN');
                 return item.name.toLowerCase().includes(searchKey) || dateStr.includes(searchKey);
             });
-
             const groups = filtered.reduce((acc, item) => {
                 const dateStr = item.date.toDate().toLocaleDateString('vi-VN');
                 if (!acc[dateStr]) acc[dateStr] = { items: [], total: 0 };
@@ -291,7 +293,6 @@
                 acc[dateStr].total += item.amount;
                 return acc;
             }, {});
-
             for (let date in groups) {
                 let detailHtml = groups[date].items.map(item => `
                     <div class="exp-item">
@@ -299,25 +300,14 @@
                         <button class="btn btn-sm text-muted" onclick="xoaChiPhi('${item.id}')">❌</button>
                     </div>
                 `).join('');
-
-                list.innerHTML += `
-                    <details class="admin-card mb-2" style="padding: 0; overflow:hidden;">
-                        <summary class="p-3 fw-bold d-flex justify-content-between align-items-center" style="cursor:pointer;">
-                            <span>📅 Ngày ${date} (${groups[date].items.length} món)</span>
-                            <span class="text-success">Tổng: ${groups[date].total.toLocaleString()}đ</span>
-                        </summary>
-                        <div class="bg-light border-top">
-                            ${detailHtml}
-                        </div>
-                    </details>
-                `;
+                list.innerHTML += `<details class="admin-card mb-2" style="padding: 0; overflow:hidden;"><summary class="p-3 fw-bold d-flex justify-content-between align-items-center" style="cursor:pointer;"><span>📅 Ngày ${date} (${groups[date].items.length} món)</span><span class="text-success">Tổng: ${groups[date].total.toLocaleString()}đ</span></summary><div class="bg-light border-top">${detailHtml}</div></details>`;
             }
             if(filtered.length === 0) list.innerHTML = "<div class='text-center text-muted p-4'>Không tìm thấy dữ liệu</div>";
         };
 
         window.xoaChiPhi = async (id) => { if(confirm("Xóa dòng chi phí này?")) await deleteDoc(doc(db, "expenses", id)); };
 
-        // QUẢN LÝ ĐƠN HÀNG
+        // --- PHẦN QUAN TRỌNG: THEO DÕI ĐƠN HÀNG VÀ CẢNH BÁO SỬA ---
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
             const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
@@ -347,17 +337,47 @@
             const listCho = document.getElementById('list-cho'); const listXong = document.getElementById('list-xong');
             listCho.innerHTML = ""; listXong.innerHTML = "";
             let newOrdersSet = new Set();
+            
             snap.forEach(docOrder => {
                 const d = docOrder.data(); if (d.trangThai === "da_thanh_toan") return;
-                newOrdersSet.add(docOrder.id);
-                if (!currentOrders.has(docOrder.id) && d.trangThai === "dang_cho") playBell();
+                const orderId = docOrder.id;
+                newOrdersSet.add(orderId);
+
+                // LOGIC CẢNH BÁO
+                // 1. Đơn mới hoàn toàn
+                if (!currentOrders.has(orderId) && d.trangThai === "dang_cho") {
+                    playBell();
+                } 
+                // 2. ĐƠN CŨ NHƯNG CÓ CỜ "vuaCapNhat" (Khách sửa)
+                else if (d.vuaCapNhat === true) {
+                    playBell();
+                    Swal.fire({
+                        toast: true, position: 'top-end', icon: 'warning',
+                        title: `KHÁCH ${d.khach.toUpperCase()} VỪA SỬA ĐƠN!`,
+                        showConfirmButton: false, timer: 5000
+                    });
+                    // Tắt cờ ngay để không kêu lặp lại
+                    updateDoc(doc(db, "orders", orderId), { vuaCapNhat: false });
+                }
+
                 const items = d.danhSachMon.map(i => `<div>• ${i.name} <b>x${i.qty}</b></div>`).join('');
                 const noteHtml = d.note ? `<div class="order-note">📝 ${d.note}</div>` : '';
-                let html = `<div class="order-box"><div class="fw-bold text-danger fs-6">👤 ${d.khach}</div><div class="small my-1">${items}</div>${noteHtml}<div class="fw-bold border-top pt-1 text-end mt-1">${Number(d.tongTien).toLocaleString()}đ</div>`;
+                const updateBadge = d.vuaCapNhat ? `<span class="badge-update">KHÁCH VỪA SỬA</span>` : '';
+
+                let html = `
+                    <div class="order-box ${d.vuaCapNhat ? 'updated' : ''}">
+                        <div class="fw-bold text-danger fs-6 d-flex justify-content-between align-items-center">
+                            <span>👤 ${d.khach}</span>
+                            ${updateBadge}
+                        </div>
+                        <div class="small my-1">${items}</div>
+                        ${noteHtml}
+                        <div class="fw-bold border-top pt-1 text-end mt-1">${Number(d.tongTien).toLocaleString()}đ</div>`;
+                
                 if (d.trangThai === 'dang_cho') {
-                    html += `<div class="row g-1 mt-2"><div class="col-8"><button class="btn btn-sm btn-primary w-100 fw-bold" onclick="done('${docOrder.id}')">XONG</button></div><div class="col-4"><button class="btn btn-sm btn-outline-danger w-100" onclick="xoaDonHang('${docOrder.id}')">Hủy</button></div><div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món / Ghi chú</button></div></div>`;
+                    html += `<div class="row g-1 mt-2"><div class="col-8"><button class="btn btn-sm btn-primary w-100 fw-bold" onclick="done('${orderId}')">XONG</button></div><div class="col-4"><button class="btn btn-sm btn-outline-danger w-100" onclick="xoaDonHang('${orderId}')">Hủy</button></div><div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${orderId}')">✏️ Sửa món / Ghi chú</button></div></div>`;
                 } else if (d.trangThai === 'da_xong') {
-                    html += `<div class="row g-1 mt-2"><div class="col-12"><button class="btn btn-sm btn-success w-100 fw-bold" onclick="pay('${docOrder.id}')">THANH TOÁN</button></div><div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${docOrder.id}')">✏️ Sửa món / Ghi chú</button></div></div>`;
+                    html += `<div class="row g-1 mt-2"><div class="col-12"><button class="btn btn-sm btn-success w-100 fw-bold" onclick="pay('${orderId}')">THANH TOÁN</button></div><div class="col-12 mt-1"><button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditModal('${orderId}')">✏️ Sửa món / Ghi chú</button></div></div>`;
                 }
                 html += `</div>`;
                 d.trangThai === 'da_xong' ? listXong.innerHTML += html : listCho.innerHTML += html;
@@ -372,6 +392,7 @@
             }).catch(e => console.log("Cần tương tác để phát âm thanh"));
         }
 
+        // GIỮ NGUYÊN DONE, PAY, HISTORY, REPORT...
         window.done = async (id) => await updateDoc(doc(db, "orders", id), { trangThai: "da_xong" });
         window.pay = async (id) => {
             const { value: method } = await Swal.fire({
@@ -450,7 +471,13 @@
                 const q = parseInt(row.querySelector('.modal-qty').value); const p = parseInt(opt.dataset.price);
                 list.push({name: opt.dataset.name, qty: q, price: p}); total += q * p;
             });
-            await updateDoc(doc(db, "orders", currentEditingOrderId), { danhSachMon: list, tongTien: total, note: document.getElementById('modal-order-note').value });
+            // Admin sửa thì không bật chuông (vuaCapNhat: false)
+            await updateDoc(doc(db, "orders", currentEditingOrderId), { 
+                danhSachMon: list, 
+                tongTien: total, 
+                note: document.getElementById('modal-order-note').value,
+                vuaCapNhat: false 
+            });
             bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
         };
 
@@ -466,4 +493,3 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
