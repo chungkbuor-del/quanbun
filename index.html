@@ -41,7 +41,7 @@
                     <div id="view-last-items"></div>
                     <hr>
                     <div class="d-flex justify-content-between fw-bold">
-                        <span>Tổng:</span> <span id="view-last-total" class="text-danger"></span>
+                        <span>Tổng cộng:</span> <span id="view-last-total" class="text-danger"></span>
                     </div>
                 </div>
                 <button class="btn btn-primary w-100 mt-3 fw-bold" onclick="allowEdit()">✏️ SỬA LẠI ĐƠN</button>
@@ -75,10 +75,9 @@
         const db = getFirestore(app);
         let cart = {};
 
-        // 1. Tải menu từ Firestore
+        // 1. Tải Menu
         onSnapshot(query(collection(db, "MENU"), orderBy("createdAt", "desc")), (snap) => {
             const menuDiv = document.getElementById('display-menu');
-            // Nếu đang ở màn hình thành công thì không load lại menu đè lên
             if (!document.getElementById('order-success-msg').classList.contains('d-none')) return;
             
             menuDiv.innerHTML = "";
@@ -103,7 +102,7 @@
             }
         });
 
-        // 2. Cập nhật giỏ hàng
+        // 2. Xử lý Giỏ hàng
         window.updateCart = (name, price, change) => {
             if (!cart[name]) cart[name] = { name, price, qty: 0 };
             cart[name].qty += change;
@@ -131,15 +130,14 @@
             document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
         }
 
-        // 3. Gửi đơn hàng
+        // 3. Gửi đơn hàng (Đã sửa lỗi No document to update)
         window.guiDonHang = async () => {
             const ten = document.getElementById('ten-khach').value.trim();
             const note = document.getElementById('ghi-chu-don').value.trim();
             const items = Object.values(cart);
             const btn = document.getElementById('btn-gui-don');
 
-            if (!ten) return alert("Vui lòng nhập tên của bạn!");
-            if (items.length === 0) return alert("Vui lòng chọn món!");
+            if (!ten || items.length === 0) return alert("Vui lòng nhập tên và chọn món!");
 
             try {
                 btn.disabled = true;
@@ -155,16 +153,28 @@
                     thoiGian: serverTimestamp()
                 };
 
+                let isProcessed = false;
+
+                // Nếu có ID cũ, thử cập nhật
                 if (orderId) {
-                    await updateDoc(doc(db, "orders", orderId), orderData);
-                } else {
+                    try {
+                        await updateDoc(doc(db, "orders", orderId), orderData);
+                        isProcessed = true;
+                    } catch (err) {
+                        console.warn("Đơn cũ đã bị xóa hoặc lỗi, đang tạo đơn mới...");
+                    }
+                }
+
+                // Nếu không có ID cũ hoặc cập nhật thất bại, tạo đơn mới hoàn toàn
+                if (!isProcessed) {
                     const docRef = await addDoc(collection(db, "orders"), orderData);
                     localStorage.setItem('lastOrderId', docRef.id);
                 }
 
                 localStorage.setItem('lastOrder', JSON.stringify(orderData));
                 renderOrderHistory(orderData);
-                alert("Đơn hàng đã được gửi thành công!");
+                alert("Đơn hàng đã được gửi đến quán!");
+
             } catch(e) { 
                 console.error(e);
                 alert("Lỗi kết nối Firebase! Vui lòng thử lại."); 
@@ -174,7 +184,7 @@
             }
         };
 
-        // 4. Hiển thị lịch sử đơn đã gửi
+        // 4. Hiển thị trạng thái hoàn tất
         function renderOrderHistory(order) {
             document.getElementById('input-section').classList.add('d-none');
             document.getElementById('display-menu').classList.add('d-none');
@@ -186,41 +196,37 @@
             document.getElementById('view-last-items').innerHTML = order.danhSachMon.map(i => `<div>• ${i.name} x${i.qty}</div>`).join('');
         }
 
-        // 5. Sửa lại đơn (KHÔNG reload trang để giữ data)
+        // 5. Sửa đơn (Giữ tên và danh sách món)
         window.allowEdit = () => {
             const saved = localStorage.getItem('lastOrder');
             if (saved) {
                 const order = JSON.parse(saved);
-                // Nạp lại dữ liệu vào biến cart
                 cart = {};
                 order.danhSachMon.forEach(i => { cart[i.name] = i; });
                 
-                // Hiển thị lại các khu vực
-                document.getElementById('input-section').classList.remove('d-none');
-                document.getElementById('display-menu').classList.remove('d-none');
-                document.getElementById('cart-container').classList.remove('d-none');
-                document.getElementById('order-success-msg').classList.add('d-none');
-                
-                // Nạp lại tên và note vào ô input
                 document.getElementById('ten-khach').value = order.khach;
                 document.getElementById('ghi-chu-don').value = order.note || "";
                 
                 renderUI();
+                document.getElementById('input-section').classList.remove('d-none');
+                document.getElementById('display-menu').classList.remove('d-none');
+                document.getElementById('cart-container').classList.remove('d-none');
+                document.getElementById('order-success-msg').classList.add('d-none');
             }
         };
 
-        // 6. Đặt đơn mới
+        // 6. Reset đặt đơn mới
         window.resetNew = () => {
-            if(confirm("Xóa đơn cũ và đặt đơn mới?")) {
+            if(confirm("Hủy đơn hiện tại để đặt đơn mới?")) {
                 localStorage.clear();
                 cart = {};
                 location.reload(); 
             }
         };
 
-        // Kiểm tra đơn cũ khi vừa vào trang
-        const saved = localStorage.getItem('lastOrder');
-        if (saved) renderOrderHistory(JSON.parse(saved));
+        // Kiểm tra xem khách đã có đơn chưa khi vừa mở trang
+        const savedOrder = localStorage.getItem('lastOrder');
+        if (savedOrder) renderOrderHistory(JSON.parse(savedOrder));
 
     </script>
 </body>
