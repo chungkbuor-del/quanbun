@@ -6,7 +6,7 @@
     <title>Đặt Món - Quán Ăn</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-bottom: 180px; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background: #f8f9fa; padding-bottom: 200px; font-family: 'Segoe UI', Arial, sans-serif; }
         .category-header { 
             background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; 
             margin-top: 25px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase;
@@ -17,16 +17,12 @@
         }
         .dish-price { color: #dc3545; font-weight: bold; }
         .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); border-radius: 20px 20px 0 0; z-index: 1000; }
-        .qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; line-height: 1; }
+        .qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #dc3545; background: white; color: #dc3545; font-weight: bold; line-height: 1; padding: 0; }
         .d-none { display: none !important; }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        #cart-details { max-height: 150px; overflow-y: auto; }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading-overlay d-none">
-        <div class="spinner-border text-danger" role="status"></div>
-    </div>
-
     <div class="container py-3">
         <h3 class="text-center fw-bold text-danger mb-4">🍜 THỰC ĐƠN ĐẶT MÓN</h3>
         
@@ -45,7 +41,7 @@
                     <div id="view-last-items"></div>
                     <hr>
                     <div class="d-flex justify-content-between fw-bold">
-                        <span>Tổng cộng:</span> <span id="view-last-total" class="text-danger"></span>
+                        <span>Tổng:</span> <span id="view-last-total" class="text-danger"></span>
                     </div>
                 </div>
                 <button class="btn btn-primary w-100 mt-3 fw-bold" onclick="allowEdit()">✏️ SỬA LẠI ĐƠN</button>
@@ -54,13 +50,10 @@
         </div>
 
         <div class="cart-bar" id="cart-container">
-            <div id="cart-details" class="mb-2" style="max-height: 80px; overflow-y: auto; font-size: 0.9rem;"></div>
+            <div id="cart-details" class="mb-2"></div>
             <div class="d-flex justify-content-between align-items-center border-top pt-2">
-                <div>
-                    <small class="text-muted">Tổng thanh toán:</small>
-                    <h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4>
-                </div>
-                <button id="btn-submit" class="btn btn-danger btn-lg fw-bold px-4" onclick="guiDonHang()">GỬI ĐƠN</button>
+                <h4 id="total-price" class="text-danger fw-bold mb-0">0đ</h4>
+                <button id="btn-gui-don" class="btn btn-danger btn-lg fw-bold px-4" onclick="guiDonHang()">GỬI ĐƠN</button>
             </div>
         </div>
     </div>
@@ -82,39 +75,17 @@
         const db = getFirestore(app);
         let cart = {};
 
-        // 1. Khôi phục trạng thái khi tải trang
-        window.onload = () => {
-            const saved = localStorage.getItem('lastOrder');
-            const isEditing = localStorage.getItem('isEditing');
-            
-            if (saved) {
-                const orderData = JSON.parse(saved);
-                if (isEditing === 'true') {
-                    // Đang trong chế độ sửa: Đổ dữ liệu vào input và giỏ hàng
-                    document.getElementById('ten-khach').value = orderData.khach;
-                    document.getElementById('ghi-chu-don').value = orderData.note || "";
-                    orderData.danhSachMon.forEach(item => {
-                        cart[item.name] = item;
-                    });
-                    renderUI();
-                } else {
-                    // Đang xem đơn đã gửi
-                    renderOrderHistory(orderData);
-                }
-            }
-        };
-
-        // 2. Lấy Menu thời gian thực
+        // 1. Tải menu từ Firestore
         onSnapshot(query(collection(db, "MENU"), orderBy("createdAt", "desc")), (snap) => {
-            if (localStorage.getItem('lastOrder') && localStorage.getItem('isEditing') !== 'true') return;
-            
             const menuDiv = document.getElementById('display-menu');
+            // Nếu đang ở màn hình thành công thì không load lại menu đè lên
+            if (!document.getElementById('order-success-msg').classList.contains('d-none')) return;
+            
             menuDiv.innerHTML = "";
             let grouped = {};
-            
             snap.forEach(d => {
                 const item = d.data();
-                const cat = item.category || "MÓN KHÁC";
+                const cat = item.category || "KHÁC";
                 if (!grouped[cat]) grouped[cat] = [];
                 grouped[cat].push(item);
             });
@@ -122,34 +93,21 @@
             for (let cat in grouped) {
                 menuDiv.innerHTML += `<div class="category-header">${cat}</div>`;
                 grouped[cat].forEach(item => {
-                    const currentQty = cart[item.name]?.qty || 0;
                     menuDiv.innerHTML += `
                     <div class="menu-item d-flex justify-content-between align-items-center">
-                        <div style="flex: 1;">
-                            <div class="fw-bold">${item.name}</div>
-                            <div class="dish-price">${item.price.toLocaleString()}đ</div>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <button class="qty-btn" onclick="updateCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, -1)">-</button>
-                            <span class="mx-3 fw-bold" id="qty-${item.name}">${currentQty}</span>
-                            <button class="qty-btn" onclick="updateCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, 1)">+</button>
-                        </div>
+                        <div><div class="fw-bold">${item.name}</div><div class="dish-price">${item.price.toLocaleString()}đ</div></div>
+                        <button class="btn btn-outline-danger btn-sm rounded-pill fw-bold" 
+                            onclick="updateCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, 1)">+ Thêm</button>
                     </div>`;
                 });
             }
         });
 
-        // 3. Cập nhật giỏ hàng
+        // 2. Cập nhật giỏ hàng
         window.updateCart = (name, price, change) => {
             if (!cart[name]) cart[name] = { name, price, qty: 0 };
             cart[name].qty += change;
-            
-            if (cart[name].qty <= 0) {
-                delete cart[name];
-                if(document.getElementById(`qty-${name}`)) document.getElementById(`qty-${name}`).innerText = 0;
-            } else {
-                if(document.getElementById(`qty-${name}`)) document.getElementById(`qty-${name}`).innerText = cart[name].qty;
-            }
+            if (cart[name].qty <= 0) delete cart[name];
             renderUI();
         };
 
@@ -159,62 +117,64 @@
             let total = 0;
             Object.values(cart).forEach(item => {
                 total += item.price * item.qty;
-                list.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${item.name} x${item.qty}</span><span>${(item.price*item.qty).toLocaleString()}đ</span></div>`;
+                list.innerHTML += `
+                    <div class="d-flex justify-content-between small mb-1 align-items-center">
+                        <span>${item.name}</span>
+                        <div class="d-flex align-items-center">
+                            <button class="qty-btn" onclick="updateCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, -1)">-</button>
+                            <span class="mx-2 fw-bold">${item.qty}</span>
+                            <button class="qty-btn" onclick="updateCart('${item.name.replace(/'/g, "\\'")}', ${item.price}, 1)">+</button>
+                            <span class="ms-3 text-danger" style="min-width: 70px; text-align: right;">${(item.price*item.qty).toLocaleString()}đ</span>
+                        </div>
+                    </div>`;
             });
             document.getElementById('total-price').innerText = total.toLocaleString() + "đ";
         }
 
-        // 4. Gửi đơn hàng (Tạo mới hoặc Cập nhật)
+        // 3. Gửi đơn hàng
         window.guiDonHang = async () => {
             const ten = document.getElementById('ten-khach').value.trim();
             const note = document.getElementById('ghi-chu-don').value.trim();
             const items = Object.values(cart);
-            const btnSubmit = document.getElementById('btn-submit');
+            const btn = document.getElementById('btn-gui-don');
 
             if (!ten) return alert("Vui lòng nhập tên của bạn!");
-            if (items.length === 0) return alert("Vui lòng chọn ít nhất một món!");
-
-            btnSubmit.disabled = true;
-            btnSubmit.innerText = "ĐANG GỬI...";
-            document.getElementById('loading').classList.remove('d-none');
+            if (items.length === 0) return alert("Vui lòng chọn món!");
 
             try {
+                btn.disabled = true;
+                btn.innerText = "ĐANG GỬI...";
+
                 const orderId = localStorage.getItem('lastOrderId');
                 const orderData = {
-                    khach: ten,
-                    note: note,
+                    khach: ten, 
+                    note: note, 
                     danhSachMon: items,
                     tongTien: items.reduce((s, i) => s + (i.price * i.qty), 0),
-                    trangThai: "dang_cho",
-                    thoiGianCapNhat: serverTimestamp()
+                    trangThai: "dang_cho", 
+                    thoiGian: serverTimestamp()
                 };
 
                 if (orderId) {
-                    // Cập nhật đơn cũ
                     await updateDoc(doc(db, "orders", orderId), orderData);
                 } else {
-                    // Tạo đơn mới hoàn toàn
-                    orderData.thoiGian = serverTimestamp();
                     const docRef = await addDoc(collection(db, "orders"), orderData);
                     localStorage.setItem('lastOrderId', docRef.id);
                 }
 
                 localStorage.setItem('lastOrder', JSON.stringify(orderData));
-                localStorage.removeItem('isEditing');
                 renderOrderHistory(orderData);
-                alert("Đơn hàng của bạn đã được gửi thành công!");
-                
+                alert("Đơn hàng đã được gửi thành công!");
             } catch(e) { 
                 console.error(e);
-                alert("Lỗi kết nối mạng! Vui lòng thử lại."); 
+                alert("Lỗi kết nối Firebase! Vui lòng thử lại."); 
             } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerText = "GỬI ĐƠN";
-                document.getElementById('loading').classList.add('d-none');
+                btn.disabled = false;
+                btn.innerText = "GỬI ĐƠN";
             }
         };
 
-        // 5. Chuyển đổi giao diện sang lịch sử đơn
+        // 4. Hiển thị lịch sử đơn đã gửi
         function renderOrderHistory(order) {
             document.getElementById('input-section').classList.add('d-none');
             document.getElementById('display-menu').classList.add('d-none');
@@ -223,26 +183,45 @@
             
             document.getElementById('view-last-name').innerText = order.khach;
             document.getElementById('view-last-total').innerText = order.tongTien.toLocaleString() + "đ";
-            document.getElementById('view-last-items').innerHTML = order.danhSachMon.map(i => `
-                <div class="d-flex justify-content-between small mb-1">
-                    <span>• ${i.name} x${i.qty}</span>
-                    <span>${(i.price * i.qty).toLocaleString()}đ</span>
-                </div>
-            `).join('');
+            document.getElementById('view-last-items').innerHTML = order.danhSachMon.map(i => `<div>• ${i.name} x${i.qty}</div>`).join('');
         }
 
-        // 6. Các nút điều hướng
+        // 5. Sửa lại đơn (KHÔNG reload trang để giữ data)
         window.allowEdit = () => {
-            localStorage.setItem('isEditing', 'true');
-            location.reload(); 
-        };
-
-        window.resetNew = () => {
-            if(confirm("Hủy đơn cũ và đặt đơn mới khác?")) {
-                localStorage.clear();
-                location.reload();
+            const saved = localStorage.getItem('lastOrder');
+            if (saved) {
+                const order = JSON.parse(saved);
+                // Nạp lại dữ liệu vào biến cart
+                cart = {};
+                order.danhSachMon.forEach(i => { cart[i.name] = i; });
+                
+                // Hiển thị lại các khu vực
+                document.getElementById('input-section').classList.remove('d-none');
+                document.getElementById('display-menu').classList.remove('d-none');
+                document.getElementById('cart-container').classList.remove('d-none');
+                document.getElementById('order-success-msg').classList.add('d-none');
+                
+                // Nạp lại tên và note vào ô input
+                document.getElementById('ten-khach').value = order.khach;
+                document.getElementById('ghi-chu-don').value = order.note || "";
+                
+                renderUI();
             }
         };
+
+        // 6. Đặt đơn mới
+        window.resetNew = () => {
+            if(confirm("Xóa đơn cũ và đặt đơn mới?")) {
+                localStorage.clear();
+                cart = {};
+                location.reload(); 
+            }
+        };
+
+        // Kiểm tra đơn cũ khi vừa vào trang
+        const saved = localStorage.getItem('lastOrder');
+        if (saved) renderOrderHistory(JSON.parse(saved));
+
     </script>
 </body>
 </html>
