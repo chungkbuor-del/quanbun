@@ -47,6 +47,7 @@
             <div class="admin-menu-item text-success" onclick="openPage('page-expenses')">💸 Nhập hàng</div>
             <div class="admin-menu-item text-info" onclick="openPage('page-timesheet')">🕒 Chấm công</div>
             <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
+            <div class="admin-menu-item text-dark" onclick="openPage('page-inventory')">📦 Tồn kho</div>
             <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
             <div class="admin-menu-item text-danger" onclick="logout()">🚪 Đăng xuất</div>
         </div>
@@ -121,6 +122,39 @@
                 </div>
             </div>
         </div>
+        <div id="page-inventory" class="admin-page">
+
+<span class="close-page-btn" onclick="closePage('page-inventory')">&times;</span>
+
+<h3 class="text-dark text-center">📦 QUẢN LÝ TỒN KHO</h3>
+
+<div class="admin-card">
+
+<div class="row g-2">
+
+<div class="col-md-4">
+<input type="text" id="inv-name" class="form-control" placeholder="Tên nguyên liệu">
+</div>
+
+<div class="col-md-3">
+<input type="number" id="inv-qty" class="form-control" placeholder="Số lượng">
+</div>
+
+<div class="col-md-3">
+<input type="text" id="inv-unit" class="form-control" placeholder="Đơn vị (kg, bó, gói...)">
+</div>
+
+<div class="col-md-2">
+<button class="btn btn-dark w-100" onclick="themKho()">LƯU</button>
+</div>
+
+</div>
+
+</div>
+
+<div id="inventory-list"></div>
+
+</div>
 <div id="page-timesheet" class="admin-page">
 
 <span class="close-page-btn" onclick="closePage('page-timesheet')">&times;</span>
@@ -254,6 +288,7 @@
         let menuItems = [];
         let allExpenses = []; 
         let allTimesheets = [];
+        let inventory = [];
         const now = new Date();
         document.getElementById('h-start').valueAsDate = now;
         document.getElementById('h-end').valueAsDate = now;
@@ -784,11 +819,147 @@ el.style.display="none";
 document.getElementById("name").addEventListener("input", e => {
 e.target.value = e.target.value.toUpperCase();
 });
+        // ===== INVENTORY =====
+
+window.themKho = async ()=>{
+const name = document.getElementById("inv-name").value.toUpperCase();
+const qty = parseFloat(document.getElementById("inv-qty").value);
+const unit = document.getElementById("inv-unit").value;
+
+if(!name || !qty || !unit){
+alert("Nhập đủ thông tin");
+return;
+}
+
+await addDoc(collection(db,"inventory"),{
+name:name,
+qty:qty,
+unit:unit
+});
+document.getElementById("inv-name").value="";
+document.getElementById("inv-name").focus();
+document.getElementById("inv-qty").value="";
+document.getElementById("inv-unit").value="";
+
+};
+
+
+// realtime inventory
+
+onSnapshot(collection(db,"inventory"),snap=>{
+
+inventory=[];
+
+snap.forEach(d=>{
+inventory.push({id:d.id,...d.data()});
+});
+
+renderInventory();
+
+});
+
+
+window.renderInventory = ()=>{
+
+const list = document.getElementById("inventory-list");
+
+if(!list) return;
+
+list.innerHTML="";
+
+inventory.forEach(i=>{
+
+let warn = "";
+
+if(i.qty < 5){
+warn = `<span class="text-danger fw-bold">⚠️ Sắp hết</span>`;
+}
+
+list.innerHTML += `
+
+<div class="admin-card">
+
+<div class="d-flex justify-content-between">
+
+<div>
+
+<b>${i.name}</b>
+
+<div>
+${i.qty} ${i.unit}
+</div>
+
+${warn}
+
+</div>
+
+<div>
+
+<button class="btn btn-success btn-sm"
+onclick="nhapKho('${i.id}',${i.qty})">
++
+</button>
+
+<button class="btn btn-warning btn-sm"
+onclick="xuatKho('${i.id}',${i.qty})">
+-
+</button>
+
+<button class="btn btn-danger btn-sm"
+onclick="xoaKho('${i.id}')">
+X
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+};
+
+
+window.nhapKho = async (id,qty)=>{
+
+let so = prompt("Nhập số lượng thêm");
+
+if(!so) return;
+
+await updateDoc(doc(db,"inventory",id),{
+qty: qty + parseFloat(so)
+});
+
+};
+
+
+window.xuatKho = async (id,qty)=>{
+
+let so = prompt("Nhập số lượng xuất");
+
+if(!so) return;
+
+let newQty = qty - parseFloat(so);
+
+if(newQty < 0){
+alert("Không đủ tồn kho");
+return;
+}
+
+await updateDoc(doc(db,"inventory",id),{
+qty: newQty
+});
+
+};
         loadHistory(); loadReport();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 
 
