@@ -136,7 +136,9 @@
 </div>
 
 <div class="col-md-3">
-<input type="text" id="ts-name" class="form-control" placeholder="Tên nhân viên">
+<input type="text" id="name" class="form-control" placeholder="Tên nhân viên" list="dsNhanVien">
+
+<datalist id="dsNhanVien"></datalist>
 </div>
 
 <div class="col-md-2">
@@ -333,6 +335,7 @@ allTimesheets.push({id:d.id,...d.data()});
 });
 
 renderTimesheets();
+capNhatDanhSachNhanVien();
 
 });
         // ===== CHẤM CÔNG =====
@@ -340,7 +343,7 @@ renderTimesheets();
 window.themChamCong = async () => {
 
 const dateVal = document.getElementById('ts-date').value;
-const name = document.getElementById('ts-name').value;
+const name = document.getElementById('name').value.trim();
 const hours = parseFloat(document.getElementById('ts-hours').value);
 const rate = parseInt(document.getElementById('ts-rate').value);
 
@@ -357,7 +360,7 @@ rate: rate,
 total: hours * rate
 });
 
-document.getElementById('ts-name').value="";
+document.getElementById('name').value="";
 document.getElementById('ts-hours').value="";
 document.getElementById('ts-date').valueAsDate = new Date();
 
@@ -634,62 +637,132 @@ document.getElementById('ts-date').valueAsDate = new Date();
             const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan")));
             await Promise.all(snap.docs.map(d => deleteDoc(d.ref))); alert("Đã xóa!");
         };
-        window.renderTimesheets = () => {
+        // ===== DANH SÁCH NHÂN VIÊN ĐỂ GỢI Ý =====
+window.capNhatDanhSachNhanVien = () => {
 
-const list=document.getElementById("timesheet-list");
+const datalist = document.getElementById("dsNhanVien");
+if(!datalist) return;
 
+let names = [...new Set(allTimesheets.map(t => t.name))];
+
+datalist.innerHTML = "";
+
+names.forEach(n=>{
+datalist.innerHTML += `<option value="${n}">`;
+});
+
+};
+
+
+// ===== HIỂN THỊ CHẤM CÔNG =====
+
+        
+window.renderTimesheets = () => {
+
+const list = document.getElementById("timesheet-list");
 if(!list) return;
 
-list.innerHTML="";
+list.innerHTML = "";
 
-let total=0;
+// gom nhân viên
+let nhanVien = {};
 
 allTimesheets.forEach(t=>{
+    if(!nhanVien[t.name]){
+        nhanVien[t.name] = [];
+    }
+    nhanVien[t.name].push(t);
+});
 
-const date=t.date.toDate().toLocaleDateString("vi-VN");
+let now = new Date();
+let startWeek = new Date(now);
+startWeek.setDate(now.getDate() - now.getDay());
 
-total += Number(t.total || 0);
+for(let ten in nhanVien){
 
-list.innerHTML+=`
+let tongTuan = 0;
+let tongThang = 0;
 
-<div class="admin-card">
+let htmlChiTiet = "";
 
-<div class="d-flex justify-content-between">
+nhanVien[ten].forEach(t=>{
+
+const dateObj = t.date.toDate();
+const date = dateObj.toLocaleDateString("vi-VN");
+const tien = Number(t.total || 0);
+
+if(dateObj >= startWeek && dateObj <= now){
+tongTuan += tien;
+}
+
+if(dateObj.getMonth() == now.getMonth() &&
+   dateObj.getFullYear() == now.getFullYear()){
+tongThang += tien;
+}
+
+htmlChiTiet += `
+<div class="d-flex justify-content-between border-bottom py-1">
 
 <div>
-<b>${t.name}</b>
-<br>
 ${date} - ${t.hours} giờ
 </div>
 
-<div class="text-end">
+<div>
 
-<div class="text-success fw-bold">
-${t.total.toLocaleString()}đ
-</div>
+<span class="text-success fw-bold">
+${tien.toLocaleString()}đ
+</span>
 
-<button class="btn btn-sm btn-danger"
+<button class="btn btn-sm btn-danger ms-2"
 onclick="xoaChamCong('${t.id}')">
-Xóa
+X
 </button>
 
 </div>
 
 </div>
-
-</div>
-
 `;
 
 });
 
-list.innerHTML+=`
-<div class="text-end fw-bold fs-4 text-primary">
-Tổng tiền công: ${total.toLocaleString()}đ
+list.innerHTML += `
+
+<div class="admin-card">
+
+<div onclick="toggleNhanVien('${ten}')" 
+style="cursor:pointer" 
+class="d-flex justify-content-between">
+
+<b>${ten}</b>
+
+<div class="text-end">
+
+<div class="text-primary">
+Tuần: ${tongTuan.toLocaleString()}đ
 </div>
+
+<div class="text-success">
+Tháng: ${tongThang.toLocaleString()}đ
+</div>
+
+</div>
+
+</div>
+
+<div id="nv_${ten}" style="display:none; margin-top:10px">
+
+${htmlChiTiet}
+
+</div>
+
+</div>
+
 `;
 
+}
+
 };
+
         window.xoaChamCong = async (id) => {
 
 if(!confirm("Xóa chấm công?")) return;
@@ -697,12 +770,26 @@ if(!confirm("Xóa chấm công?")) return;
 await deleteDoc(doc(db,"timesheets",id));
 
 };
+            window.toggleNhanVien = (ten)=>{
 
+const el = document.getElementById("nv_"+ten);
+
+if(el.style.display=="none"){
+el.style.display="block";
+}else{
+el.style.display="none";
+}
+
+};
+document.getElementById("name").addEventListener("input", e => {
+e.target.value = e.target.value.toUpperCase();
+});
         loadHistory(); loadReport();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 
 
