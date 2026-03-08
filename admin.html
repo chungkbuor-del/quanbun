@@ -45,6 +45,7 @@
             <h5 class="text-center fw-bold text-danger">⚙️ MENU</h5>
             <div class="admin-menu-item text-primary" onclick="openPage('page-menu')">➕ Thực đơn</div>
             <div class="admin-menu-item text-success" onclick="openPage('page-expenses')">💸 Nhập hàng</div>
+            <div class="admin-menu-item text-info" onclick="openPage('page-timesheet')">🕒 Chấm công</div>
             <div class="admin-menu-item text-secondary" onclick="openPage('page-history')">📜 Lịch sử đơn hàng</div>
             <div class="admin-menu-item text-warning" onclick="openPage('page-report')">📊 Doanh thu</div>
             <div class="admin-menu-item text-danger" onclick="logout()">🚪 Đăng xuất</div>
@@ -120,7 +121,46 @@
                 </div>
             </div>
         </div>
+<div id="page-timesheet" class="admin-page">
 
+<span class="close-page-btn" onclick="closePage('page-timesheet')">&times;</span>
+
+<h3 class="text-info text-center">🕒 CHẤM CÔNG NHÂN VIÊN</h3>
+
+<div class="admin-card">
+
+<div class="row g-2">
+
+<div class="col-md-3">
+<input type="date" id="ts-date" class="form-control">
+</div>
+
+<div class="col-md-3">
+<input type="text" id="ts-name" class="form-control" placeholder="Tên nhân viên">
+</div>
+
+<div class="col-md-2">
+<input type="number" id="ts-hours" class="form-control" placeholder="Số giờ">
+</div>
+
+<div class="col-md-2">
+<select id="ts-rate" class="form-select">
+<option value="25000">25.000 / giờ</option>
+<option value="20000">20.000 / giờ</option>
+</select>
+</div>
+
+<div class="col-md-2">
+<button class="btn btn-info w-100" onclick="themChamCong()">LƯU</button>
+</div>
+
+</div>
+
+</div>
+
+<div id="timesheet-list" class="mt-3"></div>
+
+</div>
         <div class="container-fluid">
             <div class="admin-card">
                 <h5 class="text-center fw-bold text-primary">📝 TẠO ĐƠN MỚI</h5>
@@ -211,12 +251,14 @@
 
         let menuItems = [];
         let allExpenses = []; 
+        let allTimesheets = [];
         const now = new Date();
         document.getElementById('h-start').valueAsDate = now;
         document.getElementById('h-end').valueAsDate = now;
         document.getElementById('r-start').valueAsDate = now;
         document.getElementById('r-end').valueAsDate = now;
         document.getElementById('exp-date').valueAsDate = now;
+        document.getElementById('ts-date').valueAsDate = now;
 
         window.toggleAdminPanel = () => { document.getElementById('admin-panel').classList.toggle('show'); };
         window.openPage = (pageId) => { document.getElementById(pageId).classList.add('show'); document.getElementById('admin-panel').classList.remove('show'); };
@@ -277,7 +319,49 @@
             allExpenses = [];
             snap.forEach(d => { allExpenses.push({ id: d.id, ...d.data() }); });
             renderExpenses();
-        });
+            });
+        // realtime timesheets
+
+onSnapshot(
+query(collection(db,"timesheets"), orderBy("date","desc")),
+snap=>{
+
+allTimesheets=[];
+
+snap.forEach(d=>{
+allTimesheets.push({id:d.id,...d.data()});
+});
+
+renderTimesheets();
+
+});
+        // ===== CHẤM CÔNG =====
+
+window.themChamCong = async () => {
+
+const dateVal = document.getElementById('ts-date').value;
+const name = document.getElementById('ts-name').value;
+const hours = parseFloat(document.getElementById('ts-hours').value);
+const rate = parseInt(document.getElementById('ts-rate').value);
+
+if(!dateVal || !name || !hours){
+alert("Nhập đủ thông tin!");
+return;
+}
+
+await addDoc(collection(db,"timesheets"),{
+date: Timestamp.fromDate(new Date(dateVal)),
+name: name,
+hours: hours,
+rate: rate,
+total: hours * rate
+});
+
+document.getElementById('ts-name').value="";
+document.getElementById('ts-hours').value="";
+document.getElementById('ts-date').valueAsDate = new Date();
+
+};
 
         window.renderExpenses = () => {
             const list = document.getElementById('expense-list');
@@ -550,11 +634,75 @@
             const snap = await getDocs(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan")));
             await Promise.all(snap.docs.map(d => deleteDoc(d.ref))); alert("Đã xóa!");
         };
+        window.renderTimesheets = () => {
+
+const list=document.getElementById("timesheet-list");
+
+if(!list) return;
+
+list.innerHTML="";
+
+let total=0;
+
+allTimesheets.forEach(t=>{
+
+const date=t.date.toDate().toLocaleDateString("vi-VN");
+
+total += Number(t.total || 0);
+
+list.innerHTML+=`
+
+<div class="admin-card">
+
+<div class="d-flex justify-content-between">
+
+<div>
+<b>${t.name}</b>
+<br>
+${date} - ${t.hours} giờ
+</div>
+
+<div class="text-end">
+
+<div class="text-success fw-bold">
+${t.total.toLocaleString()}đ
+</div>
+
+<button class="btn btn-sm btn-danger"
+onclick="xoaChamCong('${t.id}')">
+Xóa
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+list.innerHTML+=`
+<div class="text-end fw-bold fs-4 text-primary">
+Tổng tiền công: ${total.toLocaleString()}đ
+</div>
+`;
+
+};
+        window.xoaChamCong = async (id) => {
+
+if(!confirm("Xóa chấm công?")) return;
+
+await deleteDoc(doc(db,"timesheets",id));
+
+};
 
         loadHistory(); loadReport();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 
