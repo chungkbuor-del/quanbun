@@ -434,7 +434,7 @@ document.getElementById('ts-date').valueAsDate = new Date();
         window.addOrderItemInput = () => {
             const container = document.getElementById('order-items-input');
             const selectHtml = `<select class="form-select order-input dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}">${m.name} - ${m.price.toLocaleString()}đ</option>`).join('')}</select>`;
-            container.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-1 order-item-row"><div class="col-8">${selectHtml}</div><div class="col-3"><input type="number" class="form-control dish-qty" value="1" min="1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
+            container.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-1 order-item-row"><div class="col-8">${selectHtml}</div><div class="col-3"><input type="number" step="0.1" class="form-control dish-qty" value="1" min="0.1"></div><div class="col-1"><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
         };
 
         window.datMon = async () => {
@@ -445,7 +445,7 @@ document.getElementById('ts-date').valueAsDate = new Date();
             let danhSachMon = []; let tongTien = 0;
             rows.forEach(row => {
                 const select = row.querySelector('.dish-select'); const option = select.options[select.selectedIndex];
-                const qty = parseInt(row.querySelector('.dish-qty').value); const price = parseInt(option.dataset.price);
+                const qty = parseFloat(row.querySelector('.dish-qty').value); const price = parseInt(option.dataset.price);
                 danhSachMon.push({name: option.dataset.name, price: price, qty: qty});
                 tongTien += price * qty;
             });
@@ -646,14 +646,14 @@ document.getElementById('ts-date').valueAsDate = new Date();
         window.addModalItemInput = (item = null) => {
             const list = document.getElementById('modal-items-list');
             let sel = `<select class="form-select modal-dish-select">${menuItems.map(m => `<option value="${m.id}" data-price="${m.price}" data-name="${m.name}" ${item && m.name===item.name?'selected':''}>${m.name}</option>`).join('')}</select>`;
-            list.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-2 modal-item-row"><div class="col-6">${sel}</div><div class="col-3"><input type="number" class="form-control modal-qty" value="${item?item.qty:1}"></div><div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
+            list.insertAdjacentHTML('beforeend', `<div class="row g-2 mb-2 modal-item-row"><div class="col-6">${sel}</div><div class="col-3"><input type="number" step="0.1" class="form-control modal-qty" value="${item?item.qty:1}"></div><div class="col-3"><button class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">×</button></div></div>`);
         };
 
         window.saveOrderEdit = async () => {
             const rows = document.querySelectorAll('.modal-item-row'); let list = []; let total = 0;
             rows.forEach(row => {
                 const s = row.querySelector('.modal-dish-select'); const opt = s.options[s.selectedIndex];
-                const q = parseInt(row.querySelector('.modal-qty').value); const p = parseInt(opt.dataset.price);
+                const q = parseFloat(row.querySelector('.modal-qty').value); const p = parseInt(opt.dataset.price);
                 list.push({name: opt.dataset.name, qty: q, price: p}); total += q * p;
             });
             // Admin sửa thì không bật chuông (vuaCapNhat: false)
@@ -836,11 +836,16 @@ name:name,
 qty:qty,
 unit:unit
 });
+  
 document.getElementById("inv-name").value="";
 document.getElementById("inv-name").focus();
 document.getElementById("inv-qty").value="";
 document.getElementById("inv-unit").value="";
 
+};
+          window.xoaKho = async (id)=>{
+if(!confirm("Xóa nguyên liệu này?")) return;
+await deleteDoc(doc(db,"inventory",id));
 };
 
 
@@ -959,6 +964,7 @@ qty: newQty
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 
 
