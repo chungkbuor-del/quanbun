@@ -262,23 +262,36 @@ localStorage.setItem('lastOrderTime', Date.now());
             }
         };
 
-        // Kiểm tra xem khách đã có đơn chưa khi vừa mở trang
-       const savedOrder = localStorage.getItem('lastOrder');
-const savedTime = localStorage.getItem('lastOrderTime');
+       // ⭐ realtime theo dõi trạng thái đơn để auto reset
+const lastIdRealtime = localStorage.getItem("lastOrderId");
 
-if (savedOrder && savedTime) {
-    const now = Date.now();
-    const diff = now - parseInt(savedTime);
+if (lastIdRealtime) {
+    onSnapshot(doc(db, "orders", lastIdRealtime), (snap) => {
+        if (!snap.exists()) return;
 
-    const limit = 40 * 60 * 1000; // ⭐ 40 phút
+        const data = snap.data();
 
-    if (diff < limit) {
-        renderOrderHistory(JSON.parse(savedOrder));
-    } else {
-        localStorage.removeItem('lastOrder');
-        localStorage.removeItem('lastOrderId');
-        localStorage.removeItem('lastOrderTime');
-    }
+        // ⭐ reset khi thanh toán HOẶC huỷ
+        if (
+            data.trangThai === "da_thanh_toan" ||
+            data.trangThai === "da_huy"
+        ) {
+
+            localStorage.removeItem("lastOrder");
+            localStorage.removeItem("lastOrderId");
+            localStorage.removeItem("lastOrderTime");
+
+            cart = {};
+
+            // reset giao diện
+            document.getElementById('order-success-msg').classList.add('d-none');
+            document.getElementById('input-section').classList.remove('d-none');
+            document.getElementById('display-menu').classList.remove('d-none');
+            document.getElementById('cart-container').classList.remove('d-none');
+
+            alert("❗ Đơn đã kết thúc. Bạn có thể đặt món mới.");
+        }
+    });
 }
     </script>
 </body>
