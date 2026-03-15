@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Quán Ăn </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background: #f0f2f5; padding: 10px; font-family: sans-serif; }
@@ -119,6 +120,9 @@
                     <div class="text-end revenue-detail text-success fw-bold">💰 Tổng thu (Tiền mặt + CK): <span id="total-all">0đ</span></div>
                     <div class="text-end revenue-detail text-danger">📉 Tổng chi nhập hàng: <span id="total-expense">0đ</span></div>
                     <div class="text-end fw-bold fs-4 text-success border-top pt-2">LỢI NHUẬN: <span id="total-thu">0đ</span></div>
+                    <div class="mt-4">
+    <canvas id="revenueChart"></canvas>
+</div>
                 </div>
             </div>
         </div>
@@ -294,6 +298,7 @@
 
         let menuItems = [];
         let allExpenses = []; 
+        let revenueChart = null;
         let allTimesheets = [];
         let inventory = [];
         const now = new Date();
@@ -694,6 +699,72 @@ amount: tien
                 document.getElementById('total-all').innerText = rObj.all.toLocaleString() + "đ";
                 document.getElementById('total-expense').innerText = totalExp.toLocaleString() + "đ";
                 document.getElementById('total-thu').innerText = (rObj.all - totalExp).toLocaleString() + "đ";
+                // ===== BIỂU ĐỒ DOANH THU =====
+let chartData = {};
+
+snap.forEach(docOrder => {
+
+    const d = docOrder.data();
+    const oDate = d.thoiGian.toDate();
+
+    if(oDate >= s && oDate <= e){
+
+        let key;
+        const diffDays = (e - s) / (1000 * 60 * 60 * 24);
+
+        if(diffDays <= 31){
+            key = oDate.toLocaleDateString("vi-VN");
+        }else{
+            key = (oDate.getMonth()+1) + "/" + oDate.getFullYear();
+        }
+
+        if(!chartData[key]) chartData[key] = 0;
+        chartData[key] += d.tongTien;
+    }
+
+});
+
+const sortedKeys = Object.keys(chartData).sort((a,b)=>{
+
+// nếu dạng ngày dd/mm/yyyy
+if(a.split("/").length === 3){
+
+const pa = a.split("/");
+const pb = b.split("/");
+
+return new Date(pa[2], pa[1]-1, pa[0]) - new Date(pb[2], pb[1]-1, pb[0]);
+
+}
+
+// nếu dạng tháng m/yyyy
+const pa = a.split("/");
+const pb = b.split("/");
+
+return new Date(pa[1], pa[0]-1) - new Date(pb[1], pb[0]-1);
+
+});
+
+const labels = sortedKeys;
+const values = sortedKeys.map(k => chartData[k]);
+
+if(revenueChart){
+    revenueChart.destroy();
+}
+
+const ctx = document.getElementById("revenueChart");
+
+revenueChart = new Chart(ctx,{
+    type:"bar",
+    data:{
+        labels: labels,
+        datasets:[{
+            label:"Doanh thu",
+            data: values,
+            borderWidth:1
+        }]
+    },
+    options:{ responsive:true }
+});
             });
         };
 
