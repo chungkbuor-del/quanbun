@@ -629,30 +629,33 @@ amount: tien
                     const timeStr = oDate.toLocaleTimeString('vi-VN');
 
                     let itemsTable = `
-                    <table class="table table-sm table-bordered mt-1 small">
-                        <tbody>
-                    `;
-
-                    d.danhSachMon.forEach(m => {
-                        itemsTable += `
-                        <tr>
-                            <td>${m.name}</td>
-                            <td>x${m.qty}</td>
-                            <td>${(m.price * m.qty).toLocaleString()}đ</td>
-                        </tr>
-                        `;
-                    });
-
-                    itemsTable += `</tbody></table>`;
+<div class="ps-3 small text-muted">
+${d.danhSachMon.map(m => `
+    <div class="d-flex justify-content-between">
+        <span>${m.name}</span>
+        <span>x${m.qty} • ${(m.price*m.qty).toLocaleString()}đ</span>
+    </div>
+`).join("")}
+</div>
+`;
 
                    list.innerHTML += `
 <div class="order-box mb-3" style="border-left-color:#6c757d">
 
-    <div class="fw-bold d-flex justify-content-between">
-        <div>
-            👤 ${d.khach} 
-            <span class="text-primary">[${d.phuongThucTT}]</span>
-        </div>
+   <div class="d-flex justify-content-between align-items-center mb-1">
+
+    <div class="fw-bold">
+        👤 ${d.khach}
+        <span class="badge bg-primary ms-2">
+            ${d.phuongThucTT}
+        </span>
+    </div>
+
+    <div class="text-success fw-bold">
+        ${formatMoney(d.tongTien)}
+    </div>
+
+</div>
 
                         <div class="small text-muted mb-1">
                             🕒 ${dateStr} - ${timeStr}
