@@ -627,10 +627,9 @@ amount: tien
                     // format ngày + giờ
                     const dateStr = oDate.toLocaleDateString('vi-VN');
                     const timeStr = oDate.toLocaleTimeString('vi-VN');
-
-                    let itemsTable = `
+let itemsTable = `
 <div class="ps-3 small text-muted">
-${d.danhSachMon.map(m => `
+${(d.danhSachMon || []).map(m => `
     <div class="d-flex justify-content-between">
         <span>${m.name}</span>
         <span>x${m.qty} • ${(m.price*m.qty).toLocaleString()}đ</span>
