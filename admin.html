@@ -227,6 +227,13 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Ghi chú:</label>
                             <input type="text" id="modal-order-note" class="form-control">
+                            <div class="mt-2">
+<label class="form-label fw-bold">Phương thức thanh toán:</label>
+<select id="modal-pttt" class="form-select">
+<option value="Tiền mặt">💵 Tiền mặt</option>
+<option value="Chuyển khoản">💳 Chuyển khoản</option>
+</select>
+</div>
                         </div>
                         <div id="modal-items-list"></div>
                         <button class="btn btn-sm btn-outline-primary mt-2" onclick="addModalItemInput()">+ Thêm món vào đơn</button>
@@ -695,6 +702,7 @@ amount: tien
             currentEditingOrderId = orderId; const docSnap = await getDoc(doc(db, "orders", orderId)); const data = docSnap.data();
             document.getElementById('modal-customer-name').innerText = data.khach;
             document.getElementById('modal-order-note').value = data.note || "";
+            document.getElementById('modal-pttt').value = data.phuongThucTT || "Tiền mặt";
             document.getElementById('modal-items-list').innerHTML = "";
             data.danhSachMon.forEach(item => addModalItemInput(item));
             new bootstrap.Modal(document.getElementById('editOrderModal')).show();
@@ -731,15 +739,15 @@ amount: tien
     });
 
     await updateDoc(
-        doc(db, "orders", currentEditingOrderId),
-        {
-            danhSachMon: list,
-            tongTien: total,
-            note: document.getElementById('modal-order-note').value,
-            vuaCapNhat: false
-        }
-    );
-
+    doc(db, "orders", currentEditingOrderId),
+    {
+        danhSachMon: list,
+        tongTien: total,
+        note: document.getElementById('modal-order-note').value,
+        phuongThucTT: document.getElementById('modal-pttt').value,
+        vuaCapNhat: false
+    }
+);
     bootstrap.Modal
         .getInstance(document.getElementById('editOrderModal'))
         .hide();
