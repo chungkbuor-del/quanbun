@@ -631,14 +631,20 @@ amount: tien
 
                     itemsTable += `</tbody></table>`;
 
-                    list.innerHTML += `
-                    <div class="order-box mb-3" style="border-left-color:#6c757d">
+                   list.innerHTML += `
+<div class="order-box mb-3" style="border-left-color:#6c757d">
 
-                        <div class="fw-bold">
-                            👤 ${d.khach} 
-                            <span class="text-primary">[${d.phuongThucTT}]</span>
-                        </div>
+    <div class="fw-bold d-flex justify-content-between">
+        <div>
+            👤 ${d.khach} 
+            <span class="text-primary">[${d.phuongThucTT}]</span>
+        </div>
 
+        <button class="btn btn-sm btn-outline-secondary"
+        onclick="openEditModal('${docOrder.id}')">
+        ✏️ Sửa
+        </button>
+    </div>
                         <div class="small text-muted mb-1">
                             🕒 ${dateStr} - ${timeStr}
                         </div>
@@ -701,21 +707,53 @@ amount: tien
         };
 
         window.saveOrderEdit = async () => {
-            const rows = document.querySelectorAll('.modal-item-row'); let list = []; let total = 0;
-            rows.forEach(row => {
-                const s = row.querySelector('.modal-dish-select'); const opt = s.options[s.selectedIndex];
-                const q = parseFloat(row.querySelector('.modal-qty').value); const p = parseInt(opt.dataset.price);
-                list.push({name: opt.dataset.name, qty: q, price: p}); total += q * p;
-            });
-            // Admin sửa thì không bật chuông (vuaCapNhat: false)
-            await updateDoc(doc(db, "orders", currentEditingOrderId), { 
-                danhSachMon: list, 
-                tongTien: total, 
-                note: document.getElementById('modal-order-note').value,
-                vuaCapNhat: false 
-            });
-            bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
-        };
+
+    const rows = document.querySelectorAll('.modal-item-row');
+    let list = [];
+    let total = 0;
+
+    rows.forEach(row => {
+
+        const s = row.querySelector('.modal-dish-select');
+        const opt = s.options[s.selectedIndex];
+
+        const q = parseFloat(row.querySelector('.modal-qty').value);
+        const p = parseInt(opt.dataset.price);
+
+        list.push({
+            name: opt.dataset.name,
+            qty: q,
+            price: p
+        });
+
+        total += q * p;
+
+    });
+
+    await updateDoc(
+        doc(db, "orders", currentEditingOrderId),
+        {
+            danhSachMon: list,
+            tongTien: total,
+            note: document.getElementById('modal-order-note').value,
+            vuaCapNhat: false
+        }
+    );
+
+    bootstrap.Modal
+        .getInstance(document.getElementById('editOrderModal'))
+        .hide();
+
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Đã cập nhật đơn',
+        showConfirmButton: false,
+        timer: 1500
+    });
+
+};
 
         window.xoaDonHang = async (id) => { if(confirm("Hủy đơn?")) await deleteDoc(doc(db, "orders", id)); };
         window.xoaToanBoLichSu = async () => {
