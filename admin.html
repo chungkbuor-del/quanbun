@@ -299,6 +299,7 @@
         let menuItems = [];
         let allExpenses = []; 
         let revenueChart = null;
+        let reportUnsub = null;
         let allTimesheets = [];
         let inventory = [];
         const now = new Date();
@@ -678,12 +679,17 @@ amount: tien
 };
 
         window.loadReport = async () => {
+            if(reportUnsub){
+    reportUnsub();
+}
             const startVal = document.getElementById('r-start').value; const endVal = document.getElementById('r-end').value;
             if(!startVal || !endVal) return alert("Chọn ngày!");
             const s = new Date(startVal); s.setHours(0,0,0,0); const e = new Date(endVal); e.setHours(23,59,59,999);
             const expSnap = await getDocs(collection(db, "expenses"));
             let totalExp = 0; expSnap.forEach(edoc => { const edata = edoc.data(); const edate = edata.date.toDate(); if(edate >= s && edate <= e) totalExp += edata.amount; });
-            onSnapshot(query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan")), snap => {
+            reportUnsub = onSnapshot(
+query(collection(db, "orders"), where("trangThai", "==", "da_thanh_toan")),
+snap => {
                 const table = document.getElementById('revenue-table'); let rObj = { all: 0, cash: 0, bank: 0 };
                 snap.forEach(docOrder => {
                     const d = docOrder.data(); const oDate = d.thoiGian.toDate();
