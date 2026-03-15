@@ -137,7 +137,21 @@
             const items = Object.values(cart);
             const btn = document.getElementById('btn-gui-don');
 
-            if (!ten || items.length === 0) return alert("Vui lòng nhập tên và chọn món!");
+            if (!ten) {
+    alert("Vui lòng nhập tên!");
+    const inputTen = document.getElementById('ten-khach');
+    inputTen.focus();                 // đưa con trỏ vào ô tên
+    inputTen.scrollIntoView({         // tự cuộn lên ô tên
+        behavior: "smooth",
+        block: "center"
+    });
+    return;
+}
+
+if (items.length === 0) {
+    alert("Vui lòng chọn món!");
+    return;
+}
 
             try {
                 btn.disabled = true;
