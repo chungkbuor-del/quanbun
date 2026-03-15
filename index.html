@@ -208,8 +208,8 @@ if (items.length === 0) {
                     const docRef = await addDoc(collection(db, "orders"), orderData);
                     localStorage.setItem('lastOrderId', docRef.id);
                 }
-
-                localStorage.setItem('lastOrder', JSON.stringify(orderData));
+localStorage.setItem('lastOrder', JSON.stringify(orderData));
+localStorage.setItem('lastOrderTime', Date.now());
                 renderOrderHistory(orderData);
                 alert("Đơn hàng đã được gửi đến quán!");
 
@@ -263,9 +263,23 @@ if (items.length === 0) {
         };
 
         // Kiểm tra xem khách đã có đơn chưa khi vừa mở trang
-        const savedOrder = localStorage.getItem('lastOrder');
-        if (savedOrder) renderOrderHistory(JSON.parse(savedOrder));
+       const savedOrder = localStorage.getItem('lastOrder');
+const savedTime = localStorage.getItem('lastOrderTime');
 
+if (savedOrder && savedTime) {
+    const now = Date.now();
+    const diff = now - parseInt(savedTime);
+
+    const limit = 40 * 60 * 1000; // ⭐ 40 phút
+
+    if (diff < limit) {
+        renderOrderHistory(JSON.parse(savedOrder));
+    } else {
+        localStorage.removeItem('lastOrder');
+        localStorage.removeItem('lastOrderId');
+        localStorage.removeItem('lastOrderTime');
+    }
+}
     </script>
 </body>
 </html>
